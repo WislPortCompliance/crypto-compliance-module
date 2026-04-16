@@ -19,7 +19,7 @@ p.user.count().then(n => { console.log(n); p.\$disconnect(); }).catch(() => { co
 
 if [ "$USER_COUNT" = "0" ]; then
   echo "▶ Database is empty — running seed..."
-  npx ts-node --compiler-options '{"module":"CommonJS"}' prisma/seed.ts
+  node prisma/seed.js
   echo "✓ Seed complete"
 else
   echo "✓ Database already has data ($USER_COUNT users) — skipping seed"
