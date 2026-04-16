@@ -188,7 +188,7 @@ async function main() {
     { id: 'ctrl-005', controlRef: 'AML-005', name: 'Travel Rule Compliance', description: 'FATF Travel Rule implementation for crypto transactions above threshold — collecting and transmitting originator/beneficiary information.', categoryId: 'cat-aml', fcaPrincipleId: 'fca-p3', status: ControlStatus.NON_COMPLIANT, ownerId: complianceOfficer.id, lastReviewed: new Date('2025-09-01'), nextReviewDate: new Date('2026-09-01') },
     { id: 'ctrl-006', controlRef: 'AML-006', name: 'Sanctions Screening', description: 'Real-time sanctions screening against OFSI, OFAC, UN, and EU sanctions lists for all customers and transactions.', categoryId: 'cat-aml', fcaPrincipleId: 'fca-p1', status: ControlStatus.COMPLIANT, ownerId: complianceOfficer.id, lastReviewed: new Date('2025-08-01'), nextReviewDate: new Date('2026-08-01') },
     { id: 'ctrl-007', controlRef: 'AML-007', name: 'Politically Exposed Persons (PEP) Screening', description: 'PEP screening at onboarding and ongoing for all customers, with enhanced monitoring for identified PEPs.', categoryId: 'cat-aml', fcaPrincipleId: 'fca-p3', status: ControlStatus.COMPLIANT, ownerId: complianceOfficer.id, lastReviewed: new Date('2025-07-15'), nextReviewDate: new Date('2026-07-15') },
-    { id: 'ctrl-008', controlRef: 'AML-008', name: 'Blockchain Analytics Integration', description: 'Integration with blockchain analytics tools (e.g., Chainalysis, Elliptic) for cryptoasset tracing and risk scoring.', categoryId: 'cat-aml', fcaPrincipleId: 'fca-p3', status: ControlStatus.PARTIALLY_COMPLIANT, ownerId: complianceOfficer.id, lastReviewed: new Date('2025-09-15'), nextReviewDate: new Date('2026-09-15') },
+    { id: 'ctrl-008', controlRef: 'AML-008', name: 'Blockchain Analytics Integration', description: 'Integration with blockchain analytics tools (Transaction Monitoring API) for cryptoasset tracing and risk scoring of all incoming and outgoing transactions.', categoryId: 'cat-aml', fcaPrincipleId: 'fca-p3', status: ControlStatus.PARTIALLY_COMPLIANT, ownerId: complianceOfficer.id, lastReviewed: new Date('2025-09-15'), nextReviewDate: new Date('2026-09-15') },
     { id: 'ctrl-009', controlRef: 'AML-009', name: 'AML Risk Assessment', description: 'Firm-wide AML/CTF risk assessment covering products, customers, geographies, delivery channels, and cryptoasset-specific risks.', categoryId: 'cat-aml', fcaPrincipleId: 'fca-p3', status: ControlStatus.COMPLIANT, ownerId: riskManager.id, lastReviewed: new Date('2025-07-10'), nextReviewDate: new Date('2026-07-10') },
     { id: 'ctrl-010', controlRef: 'AML-010', name: 'AML Training Programme', description: 'Mandatory AML training for all staff with role-specific modules and annual refreshers. Records maintained.', categoryId: 'cat-aml', fcaPrincipleId: 'fca-p2', status: ControlStatus.COMPLIANT, ownerId: complianceOfficer.id, lastReviewed: new Date('2025-07-30'), nextReviewDate: new Date('2026-07-30') },
     // Governance Controls
@@ -311,7 +311,7 @@ async function main() {
       description: 'Implementation of compliance systems, technology infrastructure, and operational controls.',
       status: StageStatus.IN_PROGRESS,
       order: 4,
-      targetDate: new Date('2024-06-30'),
+      targetDate: new Date('2026-06-30'),
       requirements: [
         { title: 'Compliance monitoring system implementation', status: StageStatus.COMPLETE },
         { title: 'Transaction monitoring system deployment', status: StageStatus.IN_PROGRESS },
@@ -328,7 +328,7 @@ async function main() {
       description: 'Full AML/CTF programme implementation including policies, procedures, and technology.',
       status: StageStatus.IN_PROGRESS,
       order: 5,
-      targetDate: new Date('2024-07-31'),
+      targetDate: new Date('2026-07-31'),
       requirements: [
         { title: 'AML policy suite finalisation', status: StageStatus.COMPLETE },
         { title: 'KYC/CDD procedures documentation', status: StageStatus.COMPLETE },
@@ -346,7 +346,7 @@ async function main() {
       description: 'Implementation of Consumer Duty obligations and retail investor protections.',
       status: StageStatus.NOT_STARTED,
       order: 6,
-      targetDate: new Date('2024-08-31'),
+      targetDate: new Date('2026-08-31'),
       requirements: [
         { title: 'Consumer Duty implementation plan', status: StageStatus.NOT_STARTED },
         { title: 'Risk warning framework implementation', status: StageStatus.NOT_STARTED },
@@ -362,7 +362,7 @@ async function main() {
       description: 'Final preparation and submission of FCA authorisation application.',
       status: StageStatus.NOT_STARTED,
       order: 7,
-      targetDate: new Date('2024-10-31'),
+      targetDate: new Date('2026-10-31'),
       requirements: [
         { title: 'Application form completion', status: StageStatus.NOT_STARTED },
         { title: 'Supporting document pack assembly', status: StageStatus.NOT_STARTED },
@@ -388,6 +388,22 @@ async function main() {
     },
   ]
 
+  // Map certain completed requirements to evidence documents
+  const reqDocumentMap: Record<string, string> = {
+    'req-stage-1-1': 'doc-001',   // Business model assessment → AML Policy
+    'req-stage-1-3': 'doc-005',   // Pre-application meeting → Meeting Notes
+    'req-stage-2-0': 'doc-006',   // Regulatory business plan → Board Governance Charter
+    'req-stage-2-1': 'doc-006',   // Governance framework → Board Governance Charter
+    'req-stage-3-0': 'doc-003',   // Capital adequacy → Annual AML Report
+    'req-stage-4-0': 'doc-002',   // Compliance monitoring system → KYC Manual
+    'req-stage-4-5': 'doc-004',   // IT security assessment → Pen Test Report
+    'req-stage-5-0': 'doc-001',   // AML policy suite → AML Policy
+    'req-stage-5-1': 'doc-002',   // KYC/CDD procedures → KYC Manual
+    'req-stage-5-4': 'doc-001',   // MLRO appointment → AML Policy
+    'req-stage-5-5': 'doc-003',   // AML training → Annual AML Report
+    'req-stage-5-6': 'doc-001',   // SAR procedures → AML Policy
+  }
+
   for (const stageData of stages) {
     const { requirements, ...stageFields } = stageData
     const stage = await prisma.fCAApplicationStage.upsert({
@@ -397,14 +413,17 @@ async function main() {
     })
 
     for (let i = 0; i < requirements.length; i++) {
+      const reqId = `req-${stageFields.id}-${i}`
+      const documentId = reqDocumentMap[reqId] ?? null
       await prisma.stageRequirement.upsert({
-        where: { id: `req-${stageFields.id}-${i}` },
-        update: { status: requirements[i].status },
+        where: { id: reqId },
+        update: { status: requirements[i].status, documentId },
         create: {
-          id: `req-${stageFields.id}-${i}`,
+          id: reqId,
           stageId: stage.id,
           title: requirements[i].title,
           status: requirements[i].status,
+          documentId,
         },
       })
     }
@@ -502,12 +521,12 @@ async function main() {
     { id: 'cme-25', regulationId: 'reg-basel', applicable: false, status: ControlStatus.NOT_ASSESSED, notes: 'Not directly applicable — applies to banks with crypto exposures. Monitor as prudential framework may extend to CASPs.' },
   ]
 
+  // Delete and recreate compliance map entries to avoid ID conflicts across seeds
+  await prisma.complianceMapEntry.deleteMany({ where: { organisationId: org.id } })
   for (const entry of mapEntries) {
     const { id, ...rest } = entry
-    await prisma.complianceMapEntry.upsert({
-      where: { id },
-      update: {},
-      create: { id, organisationId: org.id, ...rest },
+    await prisma.complianceMapEntry.create({
+      data: { id, organisationId: org.id, ...rest },
     })
   }
 
@@ -600,20 +619,875 @@ async function main() {
 
   // ─── Documents ────────────────────────────────────────────────────────────
   const documents = [
-    { id: 'doc-001', name: 'AML Policy v3.2', type: DocumentType.POLICY, description: 'Group AML/CTF Policy covering all business lines', uploadedBy: complianceOfficer.id },
-    { id: 'doc-002', name: 'KYC Procedures Manual', type: DocumentType.PROCEDURE, description: 'Detailed KYC procedures for onboarding team', uploadedBy: complianceOfficer.id },
-    { id: 'doc-003', name: 'Annual AML Report 2023', type: DocumentType.REPORT, description: 'MLRO Annual Report to Board — FY2023', uploadedBy: complianceOfficer.id },
-    { id: 'doc-004', name: 'Penetration Test Report Q1 2024', type: DocumentType.REPORT, description: 'Third-party penetration testing report — CyberSec Partners Ltd', uploadedBy: adminUser.id },
-    { id: 'doc-005', name: 'FCA Pre-Application Meeting Notes', type: DocumentType.EVIDENCE, description: 'Notes from FCA supervisory meeting January 2024', uploadedBy: adminUser.id },
-    { id: 'doc-006', name: 'Board Governance Charter', type: DocumentType.POLICY, description: 'Board terms of reference and governance framework', uploadedBy: adminUser.id },
-    { id: 'doc-007', name: 'ISO 27001 Certificate', type: DocumentType.CERTIFICATE, description: 'ISO 27001:2022 certification — expires December 2025', uploadedBy: adminUser.id },
-    { id: 'doc-008', name: 'Consumer Duty Implementation Plan', type: DocumentType.PROCEDURE, description: 'Board-approved Consumer Duty implementation roadmap', uploadedBy: complianceOfficer.id },
+    {
+      id: 'doc-001',
+      name: 'AML Policy v3.2',
+      type: DocumentType.POLICY,
+      description: 'Group AML/CTF Policy covering all business lines',
+      uploadedBy: complianceOfficer.id,
+      content: `# AML/CTF Policy — BlockChain Securities Ltd
+## Version 3.2 | Effective Date: 1 January 2026 | Owner: MLRO
+
+> This policy is approved by the Board of Directors and applies to all employees, contractors, and agents of BlockChain Securities Ltd. It must be reviewed annually or upon material regulatory change.
+
+---
+
+## 1. Introduction and Scope
+
+BlockChain Securities Ltd (**"the Firm"**) is committed to preventing money laundering, terrorist financing, and proliferation financing in all its operations. This policy sets out the Firm's obligations under the **Money Laundering Regulations 2017 (as amended)**, the **Proceeds of Crime Act 2002**, and the **Terrorism Act 2000**.
+
+This policy applies to:
+- All cryptoasset exchange services
+- Custodian services for client cryptoassets
+- OTC trading and institutional services
+- Staking and ancillary services
+
+## 2. Regulatory Framework
+
+### 2.1 Primary Legislation
+
+| Legislation | Scope | Regulator |
+|---|---|---|
+| Money Laundering Regulations 2017 | CDD, EDD, ongoing monitoring | HMRC / FCA |
+| Proceeds of Crime Act 2002 | SAR obligations, tipping off | NCA |
+| Terrorism Act 2000 | Terrorist financing prevention | NCA / Counter-terrorism |
+| SAMLA 2018 / OFSI Guidance | Financial sanctions compliance | OFSI / HMT |
+| FATF Recommendations 10, 15, 16 | International VASP standards | FATF |
+
+### 2.2 FCA Expectations
+
+The FCA requires cryptoasset exchange providers to maintain a **robust, risk-based AML/CTF framework** commensurate with the nature, scale, and complexity of their business. The Firm's framework is assessed annually by the MLRO and reported to the Board.
+
+## 3. Customer Due Diligence (CDD)
+
+### 3.1 Standard CDD
+
+Standard CDD must be conducted for **all customers** at the point of onboarding. The minimum information collected is:
+
+1. Full legal name (verified against government-issued ID)
+2. Date of birth and nationality
+3. Current residential address (verified within 3 months)
+4. Source of funds declaration
+5. Nature and purpose of business relationship
+
+### 3.2 Enhanced Due Diligence (EDD)
+
+EDD is required where a higher risk of money laundering or terrorist financing is identified, including:
+
+- **Politically Exposed Persons (PEPs)** and their associates
+- Customers from **FATF high-risk jurisdictions** (current FATF grey/black list)
+- **Complex ownership structures** with ultimate beneficial owners in high-risk jurisdictions
+- Customers transacting above **£50,000** in a rolling 30-day period
+- Customers using **privacy coins** (Monero, Zcash) or mixer services
+
+EDD measures include senior management approval, enhanced source of wealth verification, and quarterly account reviews.
+
+### 3.3 Simplified CDD
+
+Simplified CDD may apply where risk is demonstrably lower, such as regulated financial institutions within the EEA or equivalent jurisdictions. Simplified CDD must be documented and reviewed at least annually.
+
+## 4. Ongoing Monitoring
+
+All customer accounts are subject to **continuous transaction monitoring** via the Firm's automated Transaction Monitoring API. The system:
+
+- Analyses blockchain transaction patterns for typologies including layering, structuring, and mixing
+- Assigns real-time risk scores to all inbound and outbound transactions
+- Generates alerts for transactions meeting defined risk thresholds
+- Flags unhosted wallet interactions above £1,000 for manual review
+
+The MLRO reviews all high-risk alerts within **24 hours**. Alert disposition is documented and retained for 5 years.
+
+## 5. Suspicious Activity Reporting (SAR)
+
+### 5.1 Internal Reporting
+
+All staff must report suspicions to the MLRO immediately upon identification. The **internal SAR form** must be completed with:
+- Details of the suspicious activity or transaction
+- Reason for suspicion with reference to specific red flags
+- Any actions taken or contemplated
+
+### 5.2 External Reporting to NCA
+
+The MLRO will submit a **SAR to the NCA** via the online portal where there is knowledge or suspicion (or reasonable grounds for such) of money laundering or terrorist financing. The MLRO will seek a **Defence Against Money Laundering (DAML)** consent where required before proceeding with a transaction.
+
+**Tipping-off** to the customer or third parties is strictly prohibited under POCA 2002 s.333A.
+
+## 6. Sanctions Screening
+
+All customers and transactions are screened in real-time against:
+- **OFSI UK Consolidated List**
+- **UN Security Council sanctions lists**
+- **EU financial sanctions register**
+- **OFAC SDN List** (for US dollar transactions)
+
+Potential matches are escalated to the MLRO within **1 hour**. The Firm will not process transactions for sanctioned individuals or entities.
+
+## 7. Travel Rule Compliance
+
+In accordance with **MLR 2017, Regulation 64A** and **FATF Recommendation 16**, the Firm collects and transmits originator and beneficiary information for all crypto transfers **≥ £1,000** to other VASPs.
+
+Where the receiving VASP cannot receive Travel Rule data, the Firm will conduct enhanced due diligence on the transaction before proceeding.
+
+## 8. Training and Awareness
+
+All staff complete mandatory AML/CTF training upon joining and **annually thereafter**. Training includes:
+- Overview of money laundering typologies in cryptoassets
+- The Firm's internal reporting procedures
+- Sanctions compliance obligations
+- Case studies from recent regulatory actions
+
+Training records are maintained by HR and reviewed by the MLRO quarterly.
+
+## 9. Record Keeping
+
+All CDD documentation, transaction records, and SAR-related materials must be retained for a minimum of **5 years** from the end of the business relationship, in accordance with MLR 2017, Regulation 40.
+
+## 10. Policy Review
+
+This policy is reviewed by the MLRO **annually**, or sooner if material changes to legislation, FCA guidance, or the Firm's business model require it. Amendments are approved by the Board and communicated to all staff within 10 business days.
+
+---
+
+*Document Reference: AML-POL-001 | Approved by: Board of Directors | Next Review: January 2027*`,
+    },
+    {
+      id: 'doc-002',
+      name: 'KYC Procedures Manual',
+      type: DocumentType.PROCEDURE,
+      description: 'Detailed KYC procedures for onboarding team',
+      uploadedBy: complianceOfficer.id,
+      content: `# KYC/CDD Procedures Manual
+## BlockChain Securities Ltd — Onboarding Team Reference
+
+> **Reference:** [MLR 2017, Regs 28-30] [FCA Crypto Regime Ch.5] [FATF Rec.10]
+> This manual provides step-by-step procedures for the onboarding team. It supplements the Group AML Policy and must be read in conjunction with it.
+
+---
+
+## 1. Overview of the KYC Process
+
+The Know Your Customer (KYC) process consists of three phases:
+
+1. **Identity Verification** — Confirming the customer is who they claim to be
+2. **Risk Classification** — Determining the customer's AML/CTF risk rating
+3. **Ongoing Monitoring** — Continuous review of the customer relationship
+
+All onboarding decisions must be documented in the **CRM system** within 24 hours of completion.
+
+## 2. Retail Customer Onboarding
+
+### 2.1 Required Documents
+
+| Document Type | Accepted Documents | Validity |
+|---|---|---|
+| Photo ID | Passport, driving licence, national ID card | Must not be expired |
+| Proof of Address | Bank statement, utility bill, council tax | Within 3 months |
+| Selfie / Liveness Check | Digital liveness via onboarding platform | Real-time |
+
+### 2.2 Step-by-Step Process
+
+1. Customer submits application via web or mobile platform
+2. **Automated ID verification** runs via integrated eKYC provider — result returned in <2 minutes
+3. If automated check fails, manual review is triggered within **4 business hours**
+4. **Sanction screening** runs automatically at point of application
+5. **PEP screening** runs automatically at point of application
+6. Risk score is calculated based on: nationality, country of residence, transaction history, occupation
+7. Customer is assigned to **Standard**, **Medium**, or **High** risk tier
+
+### 2.3 Risk Tier Definitions
+
+| Tier | Criteria | Review Frequency | Document Refresh |
+|---|---|---|---|
+| **Standard** | Low-risk nationality, domestic address, salaried income | Annual | Every 2 years |
+| **Medium** | Mixed indicators, self-employed, ≥£20k annual volume | 6 months | Annual |
+| **High** | PEP/RCA, high-risk jurisdiction, complex structure | Quarterly | 6 months |
+
+## 3. Corporate / Institutional Onboarding
+
+Corporate onboarding requires **additional documentation** beyond standard CDD:
+
+- Certificate of incorporation and constitutional documents
+- Register of Directors (all directors must be individually ID-verified)
+- Ultimate Beneficial Ownership (UBO) register — all UBOs ≥25% shareholding
+- Proof of business address
+- Latest filed accounts (if available) or management accounts
+- Source of funds declaration from authorised signatory
+
+**Complex structures** (trusts, SPVs, offshore entities) require MLRO sign-off before account activation.
+
+## 4. Enhanced Due Diligence (EDD) Triggers
+
+EDD must be initiated automatically when any of the following are present:
+
+- Customer is flagged as a **PEP or Relative/Close Associate (RCA)** by screening
+- Customer's nationality or country of residence appears on the **FATF grey or black list**
+- Source of funds cannot be adequately verified from documentary evidence
+- Onboarding transaction volume exceeds **£50,000** within first 30 days
+- Customer requests access to **OTC desk** services
+- Customer has previously had an account **terminated for compliance reasons**
+
+EDD requires written approval from the MLRO or Deputy MLRO before account activation.
+
+## 5. Unhosted Wallet Interactions
+
+Where a customer wishes to withdraw funds to an **unhosted wallet** (a wallet not associated with a regulated VASP):
+
+1. Customer must provide the wallet address
+2. Transaction Monitoring API performs a blockchain analytics check
+3. Wallets associated with **high-risk typologies** (mixers, darknet markets, sanctions evasion) are blocked
+4. Wallets with a risk score above **70/100** require MLRO approval before processing
+5. All unhosted wallet interactions above **£1,000** are subject to Travel Rule collection procedures
+
+## 6. Adverse Media Screening
+
+All customers are screened against adverse media databases at:
+- Point of onboarding
+- Quarterly automated refresh
+- Upon receipt of law enforcement or court orders
+
+Adverse media hits are reviewed by the Compliance team within **48 hours** and escalated to the MLRO where material.
+
+## 7. Rejected Applications
+
+Applications rejected on AML grounds must be:
+- Documented with specific reason code in the CRM
+- Escalated to the MLRO for SAR consideration
+- **Never communicated to the applicant** as being rejected for AML reasons (tipping-off risk)
+
+---
+
+*Document Reference: AML-PROC-002 | Owner: MLRO | Next Review: July 2027*`,
+    },
+    {
+      id: 'doc-003',
+      name: 'Annual AML Report 2025',
+      type: DocumentType.REPORT,
+      description: 'MLRO Annual Report to Board — FY2025',
+      uploadedBy: complianceOfficer.id,
+      content: `# MLRO Annual Report to the Board
+## Financial Year 2025 — BlockChain Securities Ltd
+
+> **Prepared by:** Sarah Chen, MLRO
+> **Date:** 15 March 2026
+> **Recipient:** Board of Directors
+> **Classification:** Confidential — Board Only
+
+---
+
+## Executive Summary
+
+This Annual Report is prepared in accordance with the requirements of **MLR 2017, Regulation 21** and covers the period **1 January 2025 to 31 December 2025**. The MLRO is satisfied that the Firm's AML/CTF framework remains broadly adequate, with the following key themes identified during the year:
+
+1. **Travel Rule implementation** remains the primary compliance gap — remediation in progress
+2. Blockchain analytics coverage has improved following Transaction Monitoring API upgrade
+3. SAR volumes increased by 23% year-on-year, reflecting improved detection capability
+4. Staff training completion rate reached 98% (up from 91% in 2024)
+
+The MLRO recommends the Board approve an increased budget allocation for compliance technology in FY2026 to address the Travel Rule gap.
+
+---
+
+## 1. Statistical Summary
+
+### 1.1 Customer Activity
+
+| Metric | FY2025 | FY2024 | Change |
+|---|---|---|---|
+| Total active customers | 12,847 | 9,203 | +40% |
+| New onboardings | 4,891 | 3,512 | +39% |
+| Rejected applications (AML) | 127 | 89 | +43% |
+| Accounts exited (AML grounds) | 34 | 21 | +62% |
+| EDD customers (total) | 234 | 178 | +31% |
+
+### 1.2 SAR Activity
+
+| Metric | FY2025 | FY2024 |
+|---|---|---|
+| Internal SARs submitted | 312 | 254 |
+| External SARs filed with NCA | 47 | 38 |
+| DAML consents sought | 12 | 9 |
+| DAML consents granted | 12 | 9 |
+| Law enforcement requests received | 8 | 5 |
+
+### 1.3 Transaction Monitoring
+
+| Metric | FY2025 |
+|---|---|
+| Total transactions monitored | 2.4 million |
+| Automated alerts generated | 8,934 |
+| Alerts escalated to human review | 1,247 (14%) |
+| Alerts escalated to MLRO | 312 (3.5%) |
+| Transactions blocked | 89 |
+
+## 2. Key Compliance Themes
+
+### 2.1 Travel Rule — Ongoing Gap
+
+The **UK Travel Rule (MLR 2017, Regulation 64A)** requires all VASP-to-VASP transfers ≥£1,000 to carry originator and beneficiary data. As at 31 December 2025, the Firm has implemented Travel Rule data collection for **outbound transfers** but is unable to receive Travel Rule data for **inbound transfers** due to technical limitations of counterparty VASPs.
+
+**Remediation Status:** Technical solution under evaluation. Target completion Q3 2026. This remains the Firm's most significant regulatory risk.
+
+### 2.2 Enhanced Due Diligence
+
+EDD was conducted on **234 customers** during FY2025. Key triggers included:
+- 89 PEP/RCA identifications at onboarding
+- 67 high-risk jurisdiction exposures
+- 48 complex corporate structures
+- 30 elevated transaction volume triggers
+
+No EDD accounts were retained where the risk could not be adequately mitigated.
+
+### 2.3 Blockchain Analytics
+
+Following the upgrade to the Transaction Monitoring API in Q2 2025, coverage of DeFi protocol interactions improved significantly. During the year:
+- 34 wallet addresses blacklisted following blockchain analytics alerts
+- 12 accounts referred to law enforcement following tracing of stolen funds
+- Coverage of cross-chain bridges remains a known limitation — being addressed in Q1 2026
+
+## 3. Staff Training
+
+AML training was delivered to 287 staff members during FY2025. Completion rates by function:
+
+| Function | Completion Rate |
+|---|---|
+| Customer Onboarding | 100% |
+| Trading Operations | 97% |
+| Technology & Engineering | 95% |
+| Finance & Accounting | 100% |
+| Senior Management | 100% |
+
+**Overall completion rate: 98%** (target: 100% — gap relates to 6 staff on extended leave)
+
+## 4. Regulatory Developments
+
+The following material regulatory developments were identified and assessed during FY2025:
+
+1. **FCA Cryptoassets Regime 2026** — Final rules published. Full implementation roadmap presented to Board in November 2025
+2. **FATF Travel Rule Update** — Revised FATF guidance on unhosted wallets incorporated into procedures
+3. **GENIUS Act (US)** — US stablecoin legislation assessed for impact on Firm's stablecoin handling — monitoring ongoing
+4. **MiCA** — EU authorisation assessment for German operations completed; application preparation commenced
+
+## 5. Recommendations
+
+The MLRO makes the following recommendations to the Board:
+
+1. **Approve Travel Rule solution budget** (estimated £180,000) for full implementation by Q3 2026
+2. **Increase MLRO team headcount** by 1 FTE to support growing transaction volumes
+3. **Commission proliferation finance risk assessment** — currently not formally documented
+4. **Enhance cross-chain bridge monitoring** capability in Transaction Monitoring API by Q1 2026
+
+---
+
+*Signed: Sarah Chen, MLRO — 15 March 2026*
+*Next annual report due: March 2027*`,
+    },
+    {
+      id: 'doc-004',
+      name: 'Penetration Test Report Q1 2026',
+      type: DocumentType.REPORT,
+      description: 'Third-party penetration testing report — CyberSec Partners Ltd',
+      uploadedBy: adminUser.id,
+      content: `# Penetration Test Report — Q1 2026
+## BlockChain Securities Ltd | CyberSec Partners Ltd
+
+> **Test Period:** 3–17 January 2026
+> **Report Date:** 28 January 2026
+> **Classification:** Confidential — Restricted Distribution
+> **Reference:** CSP-2026-BSL-001
+
+---
+
+## Executive Summary
+
+CyberSec Partners Ltd was engaged by BlockChain Securities Ltd to conduct an **external and internal penetration test** of its production infrastructure, customer-facing web and mobile applications, and custody management systems. Testing was conducted under a **white-box methodology** with full cooperation from the engineering team.
+
+**Overall Risk Rating: MEDIUM**
+
+Key findings: 2 High severity issues (both remediated during test window), 4 Medium severity, 7 Low/Informational. No critical vulnerabilities were identified in the custody infrastructure or private key management systems.
+
+---
+
+## 1. Scope of Testing
+
+The following systems were in scope for this engagement:
+
+| System | Type | Risk Classification |
+|---|---|---|
+| Customer web platform (app.blockchainsecurities.co.uk) | External web application | High |
+| Mobile applications (iOS/Android) | Mobile application | High |
+| Admin portal (internal) | Internal web application | Critical |
+| Custody management system | Internal API + HSM interfaces | Critical |
+| Transaction monitoring dashboard | Internal web application | High |
+| Core exchange matching engine APIs | Internal API | High |
+| AWS cloud infrastructure (EU-West-1) | Cloud infrastructure | High |
+
+## 2. Findings Summary
+
+### 2.1 High Severity
+
+**Finding H-01: Session token not invalidated on logout (Web Platform)**
+
+- **Description:** Session tokens remained valid for up to 2 hours after explicit logout, creating risk of session hijacking if a token was intercepted
+- **Impact:** An attacker with access to a valid session token could continue accessing a customer account after the customer had logged out
+- **Remediation:** Token invalidation implemented within 24 hours of finding. Verified remediated by Day 8 of test window
+- **Status: RESOLVED**
+
+**Finding H-02: Admin portal exposed on public internet without IP restriction**
+
+- **Description:** The admin portal was accessible from any IP address with only username/password authentication, with no MFA enforced for admin users
+- **Impact:** Brute-force or credential-stuffing attack against admin accounts possible without IP-based controls
+- **Remediation:** IP allowlisting implemented; MFA enforced for all admin users within 48 hours
+- **Status: RESOLVED**
+
+### 2.2 Medium Severity
+
+**Finding M-01 to M-04:** Detailed in Appendix A of the full report. Findings relate to verbose error messages, missing security headers on internal APIs (3 endpoints), and an outdated TLS 1.1 configuration on a legacy internal service (deprecated since 2021 but not yet decommissioned).
+
+**Remediation Target:** All medium findings to be remediated by 28 February 2026.
+
+### 2.3 Low / Informational
+
+Seven low-severity and informational findings were identified, including configuration hardening recommendations for AWS S3 bucket policies and suggestions for enhanced logging on the custody API. Full details in Appendix B.
+
+## 3. Custody Infrastructure Assessment
+
+The custody management system and HSM interfaces were assessed by CyberSec's specialist custody team. **No vulnerabilities were identified** in the core custody infrastructure. Key positive findings:
+
+- Private key material is stored exclusively in **HSM devices** (Thales Luna 7 series) — no software-based key storage identified
+- **Multi-signature requirements** correctly enforced for all withdrawal transactions
+- **Air-gapped signing environment** validated — no network connectivity to cold storage signing machines
+- Separation of duties controls effectively prevent any single individual from authorising large withdrawals
+- Audit logging of all custody operations is complete and tamper-resistant
+
+## 4. Comparison with Previous Test (Q1 2025)
+
+| Category | Q1 2025 | Q1 2026 | Trend |
+|---|---|---|---|
+| Critical findings | 1 | 0 | ✅ Improved |
+| High findings | 4 | 2 | ✅ Improved |
+| Medium findings | 6 | 4 | ✅ Improved |
+| Low/Info findings | 12 | 7 | ✅ Improved |
+
+The reduction in findings, particularly the elimination of critical vulnerabilities, demonstrates effective security programme maturity.
+
+## 5. Recommendations
+
+1. Complete remediation of all Medium findings by 28 February 2026
+2. Decommission the legacy TLS 1.1 service (scheduled Q2 2026)
+3. Implement automated dependency scanning in CI/CD pipeline
+4. Conduct quarterly internal vulnerability assessments between annual pen tests
+5. Consider CREST-accredited red team exercise in H2 2026
+
+---
+
+*Report prepared by: CyberSec Partners Ltd | CREST-accredited provider*
+*Next annual penetration test due: January 2027*`,
+    },
+    {
+      id: 'doc-005',
+      name: 'FCA Pre-Application Meeting Notes',
+      type: DocumentType.EVIDENCE,
+      description: 'Notes from FCA supervisory meeting January 2026',
+      uploadedBy: adminUser.id,
+      content: `# FCA Pre-Application Meeting — Notes and Action Points
+## BlockChain Securities Ltd | 15 January 2026
+
+> **Meeting Type:** Pre-Application Supervisory Meeting
+> **FCA Attendees:** Two FCA Authorisations Division officers (names withheld per FCA guidance)
+> **Firm Attendees:** Alex Thompson (CEO), Sarah Chen (MLRO), External Legal Counsel
+> **Status:** Internal Record — Privileged
+
+---
+
+## 1. Purpose of Meeting
+
+This meeting was arranged at the Firm's request to discuss the upcoming FCA cryptoasset authorisation application under the **FCA Cryptoassets Regime 2026**. The FCA representatives confirmed this was an **informal supervisory engagement** and that no formal determinations were made at this stage.
+
+The Firm presented an overview of its business model, current compliance framework, and proposed application timeline.
+
+## 2. Key Messages from FCA
+
+### 2.1 Application Readiness
+
+The FCA emphasised that the quality of the application documentation is **critical to processing time**. Key areas where the FCA commonly identifies deficiencies in cryptoasset applications include:
+
+- **Inadequate financial resources assessment** — firms must demonstrate capital adequacy commensurate with their specific cryptoasset risks, not just generic calculations
+- **Incomplete AML/CTF framework** — the MLRO must be able to demonstrate that the framework is operating effectively, not just documented
+- **Weak governance narrative** — SM&CR mapping must clearly demonstrate accountability chains for all regulated activities
+- **Technology risk** — FCA expects detailed evidence of custody controls and cybersecurity arrangements, given the digital nature of the assets
+
+### 2.2 Travel Rule
+
+The FCA raised the **Travel Rule compliance gap** as a specific concern. The FCA representative noted that:
+- This is an area of increasing supervisory focus for the FCA
+- Applications where Travel Rule is not yet operational will receive additional scrutiny
+- The Firm should be prepared to provide a detailed remediation timeline with committed milestones
+- If Travel Rule is not operational by submission date, the Firm should consider whether to delay the application
+
+**Firm response:** The MLRO confirmed that a Travel Rule solution evaluation is underway with a target implementation date of Q3 2026. The FCA representatives acknowledged this timeline as potentially acceptable if the application is submitted after implementation is complete.
+
+### 2.3 Consumer Duty
+
+The FCA emphasised that **Consumer Duty** is now a central pillar of the authorisation assessment for firms with retail customers. The Firm should be prepared to demonstrate:
+- A completed gap analysis against FCA FG22/5
+- Evidence of customer testing for communications and marketing materials
+- A clear plan for how the four Consumer Duty outcomes will be delivered
+
+### 2.4 Blockchain Analytics
+
+The FCA noted that it expects applicants to demonstrate **operational blockchain analytics capability**, not merely a contractual arrangement. The Firm should be able to evidence:
+- Real-time transaction scoring being used in operational decisions
+- Staff trained to interpret blockchain analytics outputs
+- Integration with the transaction monitoring workflow
+
+## 3. Action Points
+
+| # | Action | Owner | Target Date |
+|---|---|---|---|
+| 1 | Prepare detailed Travel Rule implementation timeline with committed milestones | MLRO | 28 February 2026 |
+| 2 | Commission Consumer Duty gap analysis against FCA FG22/5 | MLRO | 31 March 2026 |
+| 3 | Draft capital adequacy methodology document for review | CFO | 31 March 2026 |
+| 4 | Compile evidence pack for blockchain analytics operational use | CTO | 28 February 2026 |
+| 5 | Review and update SM&CR Statements of Responsibilities | CEO/General Counsel | 28 February 2026 |
+
+## 4. Next Steps
+
+The FCA representatives indicated that the Firm should submit its application once the Travel Rule gap is remediated. A follow-up meeting will be arranged in Q3 2026 to review application readiness.
+
+External legal counsel confirmed that a **Form A application** will be required for the cryptoasset activities, submitted via FCA Connect. The application should include all supporting documents as a single package to avoid processing delays.
+
+---
+
+*Notes prepared by: External Legal Counsel | Reviewed by: Alex Thompson, CEO*
+*These notes are an internal record only and do not constitute an FCA communication or determination.*`,
+    },
+    {
+      id: 'doc-006',
+      name: 'Board Governance Charter',
+      type: DocumentType.POLICY,
+      description: 'Board terms of reference and governance framework',
+      uploadedBy: adminUser.id,
+      content: `# Board Governance Charter
+## BlockChain Securities Ltd
+
+> **Adopted by:** Board of Directors
+> **Effective Date:** 1 April 2026
+> **Reference:** [SYSC 4.1] [SMCR] [FCA DEPP] [UK Corporate Governance Code]
+
+---
+
+## 1. Purpose
+
+This Charter establishes the governance framework for the Board of Directors of BlockChain Securities Ltd (**"the Company"**). It defines the role, composition, responsibilities, and operating procedures of the Board in accordance with **FCA SYSC 4.1** requirements and the principles of good corporate governance.
+
+## 2. Board Composition
+
+### 2.1 Membership
+
+The Board shall consist of a minimum of five directors:
+- **Chief Executive Officer (CEO)** — Senior Manager Function (SMF1)
+- **Chief Financial Officer (CFO)** — Senior Manager Function (SMF2)
+- **Chief Risk Officer (CRO)** — Senior Manager Function (SMF4)
+- **Non-Executive Chair** — Senior Manager Function (SMF9)
+- **Senior Independent Director (SID)** — Non-Executive
+
+At least **50% of Board members** (excluding the Chair) shall be independent Non-Executive Directors (NEDs).
+
+### 2.2 FCA SM&CR Mapping
+
+| Role | SMF | Prescribed Responsibility |
+|---|---|---|
+| CEO | SMF1 | Overall strategy and performance |
+| CFO | SMF2 | Financial management and reporting |
+| CRO | SMF4 | Risk management framework |
+| Chair | SMF9 | Board leadership and governance |
+| MLRO | SMF17 | AML/CTF compliance |
+| Head of Compliance | SMF16 | Regulatory compliance |
+
+## 3. Board Responsibilities
+
+### 3.1 Core Responsibilities
+
+The Board is collectively responsible for:
+
+1. Setting and overseeing the **strategic direction** of the Company
+2. Approving the **risk appetite** and overseeing the risk management framework
+3. Approving the **annual budget** and monitoring financial performance
+4. Ensuring **adequate internal controls** and compliance systems are in place
+5. Overseeing the Company's **FCA authorisation** obligations and relationship with the regulator
+6. Approving all **material policies** including the AML Policy, Risk Appetite Statement, and Remuneration Policy
+7. Oversight of **SM&CR** implementation and certification regime
+
+### 3.2 Matters Reserved for the Board
+
+The following matters require Board approval and may not be delegated:
+- Approval of annual accounts and interim financial statements
+- Major capital expenditure exceeding £500,000
+- Acquisitions, disposals, and strategic partnerships above materiality thresholds
+- Appointment and removal of Senior Managers
+- Approval of the firm's wind-down plan
+- Material changes to the FCA application and regulatory permissions
+
+## 4. Board Committees
+
+### 4.1 Audit & Risk Committee
+
+- **Chair:** Senior Independent Director
+- **Members:** Two NEDs and CFO (non-voting)
+- **Frequency:** Quarterly
+- **Responsibilities:** Internal audit, external audit, risk management framework, internal controls
+
+### 4.2 Compliance Committee
+
+- **Chair:** Head of Compliance / MLRO
+- **Members:** CEO, CRO, Head of Technology
+- **Frequency:** Monthly
+- **Responsibilities:** Regulatory change, compliance monitoring results, FCA application progress
+
+### 4.3 Remuneration Committee
+
+- **Chair:** NED
+- **Members:** Two NEDs and CEO (advisory)
+- **Frequency:** At least annually
+- **Responsibilities:** Remuneration policy, senior management pay, malus/clawback provisions
+
+## 5. Meeting Procedures
+
+### 5.1 Frequency
+
+The full Board shall meet at least **six times per year**, including at least one meeting dedicated to strategy. Additional meetings may be called by the Chair or CEO with 5 days' notice, or 24 hours' notice in an emergency.
+
+### 5.2 Quorum
+
+Quorum is constituted by a majority of Board members including at least one Non-Executive Director.
+
+### 5.3 Information
+
+Board papers shall be circulated at least **5 business days** before each meeting. The Company Secretary is responsible for ensuring papers are complete and informative. Directors may request additional information from management at any time.
+
+## 6. Conflicts of Interest
+
+Directors must declare actual or potential conflicts of interest to the Board at the earliest opportunity. The conflicted director will be excluded from any related discussion or vote. A **Conflicts of Interest Register** is maintained by the Company Secretary and reviewed annually.
+
+---
+
+*Document Reference: GOV-POL-001 | Version: 2.0 | Next Review: April 2027*`,
+    },
+    {
+      id: 'doc-007',
+      name: 'ISO 27001 Certificate',
+      type: DocumentType.CERTIFICATE,
+      description: 'ISO 27001:2022 certification — expires December 2026',
+      uploadedBy: adminUser.id,
+      content: `# ISO 27001:2022 Certification
+## Certificate of Registration
+
+> **Certification Body:** BSI Group (British Standards Institution)
+> **Certificate Number:** IS 756432
+> **Standard:** ISO/IEC 27001:2022 — Information Security Management Systems
+
+---
+
+## Certification Details
+
+This is to certify that the Information Security Management System (ISMS) of:
+
+**BlockChain Securities Ltd**
+Suite 14, 200 Aldersgate Street, London EC1A 4HD, United Kingdom
+
+has been assessed and found to conform to the requirements of:
+
+**ISO/IEC 27001:2022**
+*Information technology — Security techniques — Information security management systems — Requirements*
+
+### Scope of Certification
+
+The scope of this certification covers:
+
+> The design, development, operation, and management of cryptoasset exchange, custody, OTC trading, and ancillary services provided via BlockChain Securities Ltd's technology platforms, including cloud infrastructure (AWS EU-West-1), customer-facing web and mobile applications, and internal systems used for compliance monitoring, transaction processing, and client asset management.
+
+### Validity Period
+
+| | |
+|---|---|
+| **Certificate Issue Date:** | 15 December 2024 |
+| **Certificate Expiry Date:** | 14 December 2026 |
+| **Surveillance Audit 1:** | December 2025 — Passed with zero major non-conformities |
+| **Recertification Due:** | December 2026 |
+
+---
+
+## Key Control Areas Assessed
+
+The certification assessment covered the following Annex A control domains:
+
+| Control Domain | Controls Implemented | Finding |
+|---|---|---|
+| A.5 Organisational controls | 37/37 | Conforming |
+| A.6 People controls | 8/8 | Conforming |
+| A.7 Physical controls | 14/14 | Conforming |
+| A.8 Technological controls | 34/34 | Conforming — 2 opportunities for improvement noted |
+
+### Highlights from Surveillance Audit (December 2025)
+
+The surveillance audit conducted in December 2025 found the ISMS to be **operating effectively**. Auditor observations included:
+
+1. **Incident management process** is well-documented and tested — 4 tabletop exercises conducted during the certification period
+2. **Access management controls** are robust, with MFA enforced across all critical systems
+3. **Supplier management** programme has improved since initial certification — all critical suppliers now subject to annual security assessments
+4. **Business continuity plans** were tested in Q3 2025 with successful recovery within defined RTO/RPO targets
+
+**Opportunities for improvement (not non-conformities):**
+- Formalise the internal vulnerability scanning schedule with documented review process
+- Enhance cryptoasset-specific controls documentation to reference FCA operational resilience requirements
+
+---
+
+## Regulatory Significance
+
+This certification supports the Firm's obligations under:
+- **FCA SYSC 8** (Technology risk management)
+- **FCA Operational Resilience Policy** (PS21/3)
+- **UK GDPR / Data Protection Act 2018** (Article 32 — Security of processing)
+- **FCA Cryptoassets Regime 2026** (Technology and cyber controls requirements)
+
+The ISO 27001 certification is referenced in the Firm's FCA authorisation application as evidence of its information security management framework.
+
+---
+
+*Certificate No.: IS 756432 | BSI Group | www.bsigroup.com*
+*Verify at: www.bsigroup.com/our-services/certification/certificate-and-client-directory*`,
+    },
+    {
+      id: 'doc-008',
+      name: 'Consumer Duty Implementation Plan',
+      type: DocumentType.PROCEDURE,
+      description: 'Board-approved Consumer Duty implementation roadmap',
+      uploadedBy: complianceOfficer.id,
+      content: `# Consumer Duty Implementation Plan
+## BlockChain Securities Ltd | FCA Consumer Duty (PS22/9)
+
+> **Reference:** [FCA PS22/9] [FCA FG22/5 — Final non-Handbook Guidance] [PRIN 6] [COBS 4] [FCA PS23/6]
+> **Board Approved:** 1 February 2026 | **Target Completion:** 30 September 2026
+
+---
+
+## 1. Executive Summary
+
+This document sets out BlockChain Securities Ltd's implementation plan for complying with the **FCA Consumer Duty** (PS22/9) across all retail-facing cryptoasset services. The Consumer Duty came into force for new and existing products and services on 31 July 2023, and the Firm is committed to achieving full compliance ahead of its FCA authorisation application.
+
+The Firm has conducted a **gap analysis** against FCA FG22/5 (Final Guidance) and identified the following priority workstreams:
+
+| Workstream | Priority | Target Date | Status |
+|---|---|---|---|
+| Products & Services outcome | HIGH | 30 June 2026 | In Progress |
+| Price & Value outcome | HIGH | 30 June 2026 | In Progress |
+| Consumer Understanding outcome | MEDIUM | 31 July 2026 | Not Started |
+| Consumer Support outcome | MEDIUM | 31 August 2026 | Not Started |
+| Governance & MI | HIGH | 31 May 2026 | In Progress |
+
+---
+
+## 2. The Four Consumer Duty Outcomes
+
+### 2.1 Products and Services Outcome
+
+**FCA Requirement [FCA PS22/9, PRIN 2A.3]:** Firms must ensure their products and services are designed to meet the needs of a defined target market and do not cause foreseeable harm.
+
+**Current Position:**
+- Target market definitions exist but have not been formally reviewed against Consumer Duty standards
+- Product approval process does not yet include explicit Consumer Duty assessment
+- No formal assessment of whether products meet needs of vulnerable customers
+
+**Planned Actions:**
+1. Conduct target market review for all retail products (exchange, staking, custody) — **May 2026**
+2. Update product approval process to include Consumer Duty impact assessment — **June 2026**
+3. Introduce vulnerable customer identification framework — **June 2026**
+4. Document and Board-approve product and service assessments — **June 2026**
+
+### 2.2 Price and Value Outcome
+
+**FCA Requirement [FCA PS22/9, PRIN 2A.4]:** Firms must ensure the price customers pay represents fair value, taking into account benefits provided and costs incurred.
+
+**Current Position:**
+- Trading fees are published transparently on the Firm's website
+- No formal value assessment has been conducted comparing fee levels to market comparators or customer outcomes
+- FX spread on fiat-to-crypto conversions not clearly communicated at point of transaction
+
+**Planned Actions:**
+1. Commission price and value assessment across all fee types — **April 2026**
+2. Benchmark fees against comparable regulated cryptoasset providers — **May 2026**
+3. Improve FX spread disclosure — clear breakdown at point of transaction — **June 2026**
+4. Establish annual price and value review process — **June 2026**
+
+### 2.3 Consumer Understanding Outcome
+
+**FCA Requirement [FCA PS22/9, PRIN 2A.5]:** Firms must ensure communications are clear, fair, and not misleading, enabling customers to make informed decisions.
+
+**Current Position:**
+- Marketing materials reviewed under COBS 4 but not specifically assessed for Consumer Duty
+- FCA PS23/6 risk warnings implemented on website and in onboarding flow
+- Appropriateness assessments conducted but not recently reviewed against FCA FG22/5 standards
+- No evidence of customer comprehension testing for communications
+
+**Planned Actions:**
+1. Review all customer-facing communications against Consumer Understanding outcome — **July 2026**
+2. Conduct customer comprehension testing for key communications (risk warnings, T&Cs, product descriptions) — **July 2026**
+3. Refresh appropriateness test against FCA FG22/5 — **July 2026**
+4. Implement 24-hour cooling-off period for first-time investors (already in place — verify compliance) — **May 2026**
+
+### 2.4 Consumer Support Outcome
+
+**FCA Requirement [FCA PS22/9, PRIN 2A.6]:** Firms must provide support that meets customers' needs across the product lifecycle.
+
+**Current Position:**
+- Customer support operates 9am–6pm weekdays only — FCA expects 24/7 availability for digital asset services given global market hours
+- Complaints handling meets DISP requirements but has not been assessed for Consumer Duty
+- No specific process for identifying and supporting vulnerable customers in complaints handling
+
+**Planned Actions:**
+1. Extend customer support hours to 24/5 (weekdays 24-hour coverage) — **August 2026**
+2. Train customer support team on vulnerable customer identification and enhanced support — **August 2026**
+3. Review complaints process for Consumer Duty alignment — **August 2026**
+4. Implement FOS referral communication at point of complaint (currently at 8-week stage only) — **September 2026**
+
+---
+
+## 3. Risk Warnings — FCA PS23/6
+
+The FCA introduced specific cryptoasset risk warning requirements in **PS23/6** (effective October 2023). The Firm has implemented the following:
+
+**Mandatory Risk Warning (implemented October 2023):**
+> *"Don't invest unless you're prepared to lose all the money you invest. This is a high-risk investment and you are unlikely to be protected if something goes wrong. Take 2 mins to learn more."*
+
+**Implementation Status:**
+- ✅ Risk warning displayed on homepage and product landing pages
+- ✅ Risk warning displayed in onboarding flow before account creation
+- ✅ Risk warning displayed at point of first investment
+- ✅ 24-hour cooling-off for first-time investors
+- ⚠️ Risk warning on mobile app requires visual design update to meet FCA prominence requirements
+
+---
+
+## 4. Governance and Management Information
+
+To evidence Consumer Duty compliance, the Firm will establish:
+
+1. **Consumer Duty Board Champion** — designated Board member responsible for Consumer Duty oversight (appointed: CFO, effective April 2026)
+2. **Consumer Duty MI Dashboard** — monthly reporting to Board including customer outcome metrics, complaint root cause analysis, and vulnerable customer data
+3. **Annual Consumer Duty Board Report** — first report due September 2026 covering outcomes achieved and gaps
+4. **Consumer Duty Assessment** — documented assessment of each product/service against all four outcomes, reviewed annually
+
+---
+
+*Document Reference: CP-PROC-001 | Owner: MLRO/Head of Compliance | Board Approved: 1 February 2026*`,
+    },
   ]
 
   for (const doc of documents) {
     await prisma.document.upsert({
       where: { id: doc.id },
-      update: {},
+      update: { content: doc.content },
       create: { ...doc, organisationId: org.id },
     })
   }
@@ -642,7 +1516,7 @@ async function main() {
     { id: 'action-001', title: 'Implement Travel Rule Solution', description: 'Evaluate and implement a FATF Travel Rule solution (consider Notabene, Sygna, or TRISA) for VASP-to-VASP transfers. Complete technical integration and testing.', status: 'IN_PROGRESS', priority: RiskLevel.CRITICAL, dueDate: new Date('2026-07-31'), ownerId: complianceOfficer.id, controlRef: 'AML-005' },
     { id: 'action-002', title: 'Complete SM&CR Certification', description: 'Complete outstanding SM&CR Certification for 3 remaining Certified Persons. Update Conduct Rules training records.', status: 'IN_PROGRESS', priority: RiskLevel.HIGH, dueDate: new Date('2026-06-30'), ownerId: adminUser.id, controlRef: 'GOV-002' },
     { id: 'action-003', title: 'Proliferation Finance Risk Assessment', description: 'Conduct dedicated proliferation finance risk assessment per FATF guidance and FCA expectations. Document findings and controls.', status: 'OPEN', priority: RiskLevel.HIGH, dueDate: new Date('2026-07-15'), ownerId: complianceOfficer.id, controlRef: 'FC-002' },
-    { id: 'action-004', title: 'Upgrade Blockchain Analytics Capability', description: 'Expand Chainalysis integration to cover DeFi protocol tracing. Enable real-time scoring for all inbound transactions.', status: 'IN_PROGRESS', priority: RiskLevel.MEDIUM, dueDate: new Date('2026-08-31'), ownerId: riskManager.id, controlRef: 'AML-008' },
+    { id: 'action-004', title: 'Upgrade Blockchain Analytics Capability', description: 'Expand Transaction Monitoring API integration to cover DeFi protocol tracing. Enable real-time risk scoring for all inbound transactions.', status: 'IN_PROGRESS', priority: RiskLevel.MEDIUM, dueDate: new Date('2026-08-31'), ownerId: riskManager.id, controlRef: 'AML-008' },
     { id: 'action-005', title: 'Consumer Duty Gap Analysis', description: 'Conduct Consumer Duty gap analysis against FCA guidance FG22/5. Identify and prioritise remediation items.', status: 'OPEN', priority: RiskLevel.HIGH, dueDate: new Date('2026-06-15'), ownerId: complianceOfficer.id, controlRef: 'CP-001' },
     { id: 'action-006', title: 'Custody Insurance Review', description: 'Engage broker to review custody insurance coverage adequacy. Obtain quotes for increased cold storage and crime coverage.', status: 'OPEN', priority: RiskLevel.MEDIUM, dueDate: new Date('2026-07-01'), ownerId: riskManager.id, controlRef: 'CUST-004' },
     { id: 'action-007', title: 'Wind-Down Plan Finalisation', description: 'Finalise wind-down plan with treasury team. Ensure plan covers cryptoasset liquidation scenarios and client notification procedures.', status: 'OPEN', priority: RiskLevel.MEDIUM, dueDate: new Date('2026-08-01'), ownerId: adminUser.id, controlRef: 'FIN-003' },

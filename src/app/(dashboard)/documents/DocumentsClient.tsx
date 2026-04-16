@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { formatDate } from '@/lib/utils'
 
 const typeColors: Record<string, string> = {
@@ -344,7 +345,7 @@ export function DocumentsClient({ documents, auditLogs }: { documents: any[]; au
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   {docs.map((doc: any) => (
-                    <div key={doc.id} className="card p-4 hover:shadow-md transition-shadow">
+                    <Link key={doc.id} href={`/documents/${doc.id}`} className="card p-4 hover:shadow-md transition-shadow block hover:border-blue-300">
                       <div className="flex items-start gap-3">
                         <span className="text-2xl mt-0.5">{typeIcons[doc.type] ?? '📄'}</span>
                         <div className="flex-1 min-w-0">
@@ -354,9 +355,13 @@ export function DocumentsClient({ documents, auditLogs }: { documents: any[]; au
                             <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${typeColors[doc.type] ?? typeColors.OTHER}`}>{doc.type}</span>
                             <span className="text-xs text-gray-400">{formatDate(doc.createdAt)}</span>
                           </div>
+                          <div className="mt-2 text-xs text-blue-600 font-medium flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                            View document
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               </div>

@@ -145,8 +145,8 @@ export function SettingsClient({ org, users, currentUser }: { org: any; users: a
       {tab === 'integrations' && (
         <div className="max-w-3xl grid grid-cols-2 gap-4">
           {[
-            { name: 'Chainalysis', desc: 'Blockchain analytics and transaction monitoring', status: 'connected', logo: '🔗' },
-            { name: 'ComplyAdvantage', desc: 'AML screening and adverse media monitoring', status: 'connected', logo: '🛡️' },
+            { name: 'Transaction Monitoring API', desc: 'Blockchain analytics and transaction monitoring', status: 'connected', logo: '🔗' },
+            { name: 'AML Screening Service', desc: 'AML screening and adverse media monitoring', status: 'connected', logo: '🛡️' },
             { name: 'AWS S3', desc: 'Document storage and archival', status: 'connected', logo: '☁️' },
             { name: 'Slack', desc: 'Alert notifications to compliance team channel', status: 'not_connected', logo: '💬' },
             { name: 'Microsoft Teams', desc: 'Compliance alerts and workflow notifications', status: 'not_connected', logo: '📱' },

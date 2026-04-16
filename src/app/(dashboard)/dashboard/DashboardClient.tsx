@@ -98,40 +98,41 @@ export function DashboardClient({
 
       {/* Top Row: Score + Metrics */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        {/* Compliance Score */}
-        <div className="card p-6 flex items-center gap-6 lg:col-span-1">
-          <ScoreGauge score={score} />
-          <div>
-            <div className="text-sm font-semibold text-gray-700 mb-3">Control Breakdown</div>
-            <div className="space-y-1.5 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></span>
-                <span className="text-gray-600">Compliant</span>
-                <span className="ml-auto font-semibold text-gray-900">{compliantControls}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0"></span>
-                <span className="text-gray-600">Partial</span>
-                <span className="ml-auto font-semibold text-gray-900">{partialControls}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span>
-                <span className="text-gray-600">Non-Compliant</span>
-                <span className="ml-auto font-semibold text-gray-900">{nonCompliantControls}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-gray-400 flex-shrink-0"></span>
-                <span className="text-gray-600">Not Assessed</span>
-                <span className="ml-auto font-semibold text-gray-900">{notAssessedControls}</span>
+        {/* Compliance Score — col-span-2 */}
+        <div className="card p-6 lg:col-span-2">
+          <div className="flex items-center gap-6">
+            <ScoreGauge score={score} />
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-gray-700 mb-3">Control Breakdown</div>
+              <div className="space-y-2.5">
+                {[
+                  { label: 'Compliant', count: compliantControls, color: 'bg-green-500', total: totalControls },
+                  { label: 'Partial', count: partialControls, color: 'bg-amber-500', total: totalControls },
+                  { label: 'Non-Compliant', count: nonCompliantControls, color: 'bg-red-500', total: totalControls },
+                  { label: 'Not Assessed', count: notAssessedControls, color: 'bg-gray-400', total: totalControls },
+                ].map(item => (
+                  <div key={item.label}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${item.color}`}></span>
+                        <span className="text-gray-600">{item.label}</span>
+                      </div>
+                      <span className="text-xs font-semibold text-gray-900">{item.count}</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-1.5">
+                      <div className={`h-1.5 rounded-full ${item.color}`} style={{ width: `${item.total > 0 ? Math.round((item.count / item.total) * 100) : 0}%` }} />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Metric Cards */}
-        <div className="lg:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {/* Metric Cards — col-span-2 */}
+        <div className="lg:col-span-2 grid grid-cols-2 gap-4">
           <MetricCard label="Total Controls" value={totalControls} sub="across all categories" color="blue" icon="shield" />
-          <MetricCard label="Compliant" value={`${Math.round((compliantControls / totalControls) * 100)}%`} sub={`${compliantControls} of ${totalControls}`} color="green" icon="check" />
+          <MetricCard label="Compliant" value={`${Math.round((compliantControls / Math.max(totalControls, 1)) * 100)}%`} sub={`${compliantControls} of ${totalControls}`} color="green" icon="check" />
           <MetricCard label="Overdue Actions" value={overdueActions} sub="require immediate attention" color={overdueActions > 0 ? 'red' : 'green'} icon="warning" />
           <MetricCard label="Reviews Due (30d)" value={upcomingReviews} sub="controls need review" color={upcomingReviews > 5 ? 'amber' : 'gray'} icon="calendar" />
         </div>
