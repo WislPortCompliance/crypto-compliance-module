@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: crypto-comply
+    runtime: node
+    region: oregon          # change to frankfurt if EU hosting preferred
+    plan: starter           # upgrade to standard for prod; starter is fine for demo
+    buildCommand: npm ci && npx prisma generate && npm run build
+    startCommand: bash render-start.sh
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false         # set manually in Render dashboard — paste your Neon connection string
+      - key: NEXTAUTH_SECRET
+        generateValue: true # Render auto-generates a secure random value
+      - key: NEXTAUTH_URL
+        sync: false         # set to your Render URL, e.g. https://crypto-comply.onrender.com
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_APP_NAME
+        value: CryptoComply

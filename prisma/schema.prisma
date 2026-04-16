@@ -1,0 +1,460 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Local dev:  provider = "sqlite",     url = "file:./dev.db"
+// Production: provider = "postgresql", url = env("DATABASE_URL")
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  COMPLIANCE_OFFICER
+  RISK_MANAGER
+  AUDITOR
+  VIEWER
+}
+
+enum ControlStatus {
+  COMPLIANT
+  PARTIALLY_COMPLIANT
+  NON_COMPLIANT
+  NOT_ASSESSED
+}
+
+enum StageStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETE
+  NA
+}
+
+enum DocumentType {
+  POLICY
+  PROCEDURE
+  EVIDENCE
+  CERTIFICATE
+  REPORT
+  OTHER
+}
+
+enum AlertType {
+  REGULATORY_CHANGE
+  OVERDUE_ACTION
+  UPCOMING_REVIEW
+  APPLICATION_UPDATE
+  SYSTEM
+}
+
+enum RiskLevel {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFO
+}
+
+enum ApplicationStage {
+  PRE_APPLICATION
+  BUSINESS_PLAN
+  FINANCIAL_RESOURCES
+  SYSTEMS_CONTROLS
+  AML_CTF
+  CONSUMER_PROTECTION
+  SUBMISSION
+  POST_APPROVAL
+}
+
+// ─── Auth Models (NextAuth) ───────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          UserRole  @default(VIEWER)
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts         Account[]
+  sessions         Session[]
+  organisation     Organisation? @relation(fields: [organisationId], references: [id])
+  organisationId   String?
+  auditLogs        AuditLog[]
+  assignedControls ComplianceControl[] @relation("ControlOwner")
+  assignedActions  ActionItem[]        @relation("ActionOwner")
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─── Organisation ─────────────────────────────────────────────────────────────
+
+model Organisation {
+  id                 String   @id @default(cuid())
+  name               String
+  fcaReferenceNumber String?
+  entityType         String?
+  registrationNumber String?
+  incorporationDate  DateTime?
+  website            String?
+  primaryContact     String?
+  primaryEmail       String?
+  logoUrl            String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  users         User[]
+  profile       OrganisationProfile?
+  entities      Entity[]
+  controls      ComplianceControl[]
+  stages        FCAApplicationStage[]
+  documents     Document[]
+  alerts        Alert[]
+  actionItems   ActionItem[]
+  riskItems     RiskRegister[]
+  complianceMap ComplianceMapEntry[]
+  auditLogs     AuditLog[]
+
+  @@map("organisations")
+}
+
+model Entity {
+  id             String       @id @default(cuid())
+  name           String
+  fcaRef         String?
+  entityType     String?
+  jurisdiction   String?
+  organisationId String
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+  createdAt      DateTime     @default(now())
+
+  @@map("entities")
+}
+
+model OrganisationProfile {
+  id             String       @id @default(cuid())
+  organisationId String       @unique
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+
+  headcountRange String?
+  revenueRange   String?
+  customerTypes  String[]
+  yearsInCrypto  Int?
+
+  assetTypes         AssetType[]
+  operatingLocations OperatingLocation[]
+  serviceTypes       ServiceType[]
+
+  updatedAt DateTime @updatedAt
+
+  @@map("organisation_profiles")
+}
+
+model AssetType {
+  id        String              @id @default(cuid())
+  name      String
+  code      String
+  profileId String
+  profile   OrganisationProfile @relation(fields: [profileId], references: [id])
+
+  @@map("asset_types")
+}
+
+model OperatingLocation {
+  id          String              @id @default(cuid())
+  country     String
+  countryCode String
+  isPrimary   Boolean             @default(false)
+  profileId   String
+  profile     OrganisationProfile @relation(fields: [profileId], references: [id])
+
+  @@map("operating_locations")
+}
+
+model ServiceType {
+  id        String              @id @default(cuid())
+  name      String
+  code      String
+  profileId String
+  profile   OrganisationProfile @relation(fields: [profileId], references: [id])
+
+  @@map("service_types")
+}
+
+// ─── Compliance Controls ──────────────────────────────────────────────────────
+
+model ControlCategory {
+  id          String              @id @default(cuid())
+  name        String              @unique
+  code        String              @unique
+  description String?
+  controls    ComplianceControl[]
+
+  @@map("control_categories")
+}
+
+model FCAPrinciple {
+  id          String              @id @default(cuid())
+  number      String
+  name        String
+  description String?
+  controls    ComplianceControl[]
+
+  @@map("fca_principles")
+}
+
+model ComplianceControl {
+  id             String          @id @default(cuid())
+  controlRef     String
+  name           String
+  description    String          @db.Text
+  guidance       String?         @db.Text
+  status         ControlStatus   @default(NOT_ASSESSED)
+  categoryId     String
+  category       ControlCategory @relation(fields: [categoryId], references: [id])
+  fcaPrincipleId String?
+  fcaPrinciple   FCAPrinciple?   @relation(fields: [fcaPrincipleId], references: [id])
+  ownerId        String?
+  owner          User?           @relation("ControlOwner", fields: [ownerId], references: [id])
+  organisationId String
+  organisation   Organisation    @relation(fields: [organisationId], references: [id])
+  lastReviewed   DateTime?
+  nextReviewDate DateTime?
+  notes          String?         @db.Text
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  evidence ControlEvidence[]
+
+  @@map("compliance_controls")
+}
+
+model ControlEvidence {
+  id          String            @id @default(cuid())
+  controlId   String
+  control     ComplianceControl @relation(fields: [controlId], references: [id])
+  documentId  String?
+  document    Document?         @relation(fields: [documentId], references: [id])
+  description String?
+  addedAt     DateTime          @default(now())
+
+  @@map("control_evidence")
+}
+
+// ─── FCA Application ──────────────────────────────────────────────────────────
+
+model FCAApplicationStage {
+  id             String           @id @default(cuid())
+  stage          ApplicationStage
+  title          String
+  description    String?          @db.Text
+  status         StageStatus      @default(NOT_STARTED)
+  order          Int
+  organisationId String
+  organisation   Organisation     @relation(fields: [organisationId], references: [id])
+  completedAt    DateTime?
+  targetDate     DateTime?
+  notes          String?          @db.Text
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  requirements StageRequirement[]
+
+  @@unique([organisationId, stage])
+  @@map("fca_application_stages")
+}
+
+model StageRequirement {
+  id          String              @id @default(cuid())
+  stageId     String
+  stage       FCAApplicationStage @relation(fields: [stageId], references: [id])
+  title       String
+  description String?             @db.Text
+  status      StageStatus         @default(NOT_STARTED)
+  notes       String?             @db.Text
+  documentId  String?
+  updatedAt   DateTime            @updatedAt
+  createdAt   DateTime            @default(now())
+
+  @@map("stage_requirements")
+}
+
+// ─── Compliance Map ───────────────────────────────────────────────────────────
+
+model Regulation {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  name          String
+  fullName      String?
+  jurisdiction  String
+  regulator     String?
+  description   String?  @db.Text
+  effectiveDate DateTime?
+  url           String?
+
+  complianceEntries ComplianceMapEntry[]
+
+  @@map("regulations")
+}
+
+model ComplianceMapEntry {
+  id             String        @id @default(cuid())
+  organisationId String
+  organisation   Organisation  @relation(fields: [organisationId], references: [id])
+  regulationId   String
+  regulation     Regulation    @relation(fields: [regulationId], references: [id])
+  applicable     Boolean       @default(true)
+  status         ControlStatus @default(NOT_ASSESSED)
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([organisationId, regulationId])
+  @@map("compliance_map_entries")
+}
+
+// ─── Documents ────────────────────────────────────────────────────────────────
+
+model Document {
+  id             String       @id @default(cuid())
+  name           String
+  description    String?
+  type           DocumentType @default(OTHER)
+  fileUrl        String?
+  fileKey        String?
+  fileSize       Int?
+  mimeType       String?
+  uploadedBy     String?
+  organisationId String
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  evidence ControlEvidence[]
+
+  @@map("documents")
+}
+
+// ─── Alerts & Actions ─────────────────────────────────────────────────────────
+
+model Alert {
+  id             String       @id @default(cuid())
+  type           AlertType
+  title          String
+  message        String       @db.Text
+  severity       RiskLevel    @default(MEDIUM)
+  read           Boolean      @default(false)
+  actionUrl      String?
+  organisationId String
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+  expiresAt      DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@map("alerts")
+}
+
+model ActionItem {
+  id             String       @id @default(cuid())
+  title          String
+  description    String?      @db.Text
+  status         String       @default("OPEN")
+  priority       RiskLevel    @default(MEDIUM)
+  dueDate        DateTime?
+  completedAt    DateTime?
+  ownerId        String?
+  owner          User?        @relation("ActionOwner", fields: [ownerId], references: [id])
+  organisationId String
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+  controlRef     String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("action_items")
+}
+
+model RiskRegister {
+  id             String       @id @default(cuid())
+  title          String
+  description    String?      @db.Text
+  category       String?
+  likelihood     Int          @default(3)
+  impact         Int          @default(3)
+  riskScore      Int          @default(9)
+  riskLevel      RiskLevel    @default(MEDIUM)
+  mitigationPlan String?      @db.Text
+  status         String       @default("OPEN")
+  owner          String?
+  reviewDate     DateTime?
+  organisationId String
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("risk_register")
+}
+
+// ─── Audit Log ────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id             String        @id @default(cuid())
+  action         String
+  entityType     String
+  entityId       String?
+  oldValues      Json?
+  newValues      Json?
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id])
+  organisationId String?
+  organisation   Organisation? @relation(fields: [organisationId], references: [id])
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime      @default(now())
+
+  @@map("audit_logs")
+}
