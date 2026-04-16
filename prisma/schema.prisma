@@ -270,7 +270,8 @@ model ComplianceControl {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
-  evidence ControlEvidence[]
+  evidence           ControlEvidence[]
+  regulationMappings RegulationControl[]
 
   @@map("compliance_controls")
 }
@@ -339,8 +340,20 @@ model Regulation {
   url           String?
 
   complianceEntries ComplianceMapEntry[]
+  controlMappings   RegulationControl[]
 
   @@map("regulations")
+}
+
+model RegulationControl {
+  id           String            @id @default(cuid())
+  controlId    String
+  control      ComplianceControl @relation(fields: [controlId], references: [id], onDelete: Cascade)
+  regulationId String
+  regulation   Regulation        @relation(fields: [regulationId], references: [id], onDelete: Cascade)
+
+  @@unique([controlId, regulationId])
+  @@map("regulation_controls")
 }
 
 model ComplianceMapEntry {

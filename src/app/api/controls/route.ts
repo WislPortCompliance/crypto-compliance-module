@@ -31,11 +31,51 @@ export async function GET(req: NextRequest) {
       fcaPrinciple: true,
       owner: { select: { id: true, name: true, email: true } },
       evidence: { include: { document: true } },
+      regulationMappings: { include: { regulation: true } },
     },
     orderBy: [{ category: { code: 'asc' } }, { controlRef: 'asc' }],
   })
 
   return NextResponse.json(controls)
+}
+
+export async function POST(req: NextRequest) {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const orgId = (session.user as any).organisationId
+  const body = await req.json()
+  const { controlRef, name, description, categoryId, fcaPrincipleId, status, notes } = body
+
+  if (!controlRef || !name || !description || !categoryId) {
+    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+  }
+
+  const control = await prisma.complianceControl.create({
+    data: {
+      controlRef,
+      name,
+      description,
+      categoryId,
+      fcaPrincipleId: fcaPrincipleId || null,
+      status: status || 'NOT_ASSESSED',
+      notes: notes || null,
+      organisationId: orgId,
+    },
+  })
+
+  await prisma.auditLog.create({
+    data: {
+      action: 'CONTROL_CREATED',
+      entityType: 'ComplianceControl',
+      entityId: control.id,
+      newValues: { controlRef, name, status: control.status },
+      userId: (session.user as any).id,
+      organisationId: orgId,
+    },
+  })
+
+  return NextResponse.json(control, { status: 201 })
 }
 
 export async function PATCH(req: NextRequest) {
@@ -44,7 +84,7 @@ export async function PATCH(req: NextRequest) {
 
   const orgId = (session.user as any).organisationId
   const body = await req.json()
-  const { id, status, notes, ownerId, nextReviewDate } = body
+  const { id, status, notes, name, description, categoryId, fcaPrincipleId, ownerId, nextReviewDate } = body
 
   const control = await prisma.complianceControl.findFirst({ where: { id, organisationId: orgId } })
   if (!control) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -54,6 +94,10 @@ export async function PATCH(req: NextRequest) {
     data: {
       ...(status && { status }),
       ...(notes !== undefined && { notes }),
+      ...(name && { name }),
+      ...(description && { description }),
+      ...(categoryId && { categoryId }),
+      ...(fcaPrincipleId !== undefined && { fcaPrincipleId: fcaPrincipleId || null }),
       ...(ownerId !== undefined && { ownerId }),
       ...(nextReviewDate !== undefined && { nextReviewDate: nextReviewDate ? new Date(nextReviewDate) : null }),
       lastReviewed: new Date(),
@@ -65,8 +109,8 @@ export async function PATCH(req: NextRequest) {
       action: 'CONTROL_STATUS_UPDATE',
       entityType: 'ComplianceControl',
       entityId: id,
-      oldValues: { status: control.status },
-      newValues: { status: updated.status },
+      oldValues: { status: control.status, name: control.name },
+      newValues: { status: updated.status, name: updated.name },
       userId: (session.user as any).id,
       organisationId: orgId,
     },
