@@ -145,14 +145,14 @@ export function SettingsClient({ org, users, currentUser }: { org: any; users: a
       {tab === 'integrations' && (
         <div className="max-w-3xl grid grid-cols-2 gap-4">
           {[
-            { name: 'Chainalysis', desc: 'Blockchain analytics and transaction monitoring', status: 'connected', logo: '🔗' },
-            { name: 'ComplyAdvantage', desc: 'AML screening and adverse media monitoring', status: 'connected', logo: '🛡️' },
-            { name: 'AWS S3', desc: 'Document storage and archival', status: 'connected', logo: '☁️' },
+            { name: 'Transaction Monitoring API', desc: 'Real-time blockchain analytics and cryptoasset transaction monitoring', status: 'connected', logo: '🔗' },
+            { name: 'AML Screening Service', desc: 'Automated AML screening, sanctions checking, and adverse media monitoring', status: 'connected', logo: '🛡️' },
+            { name: 'AWS S3', desc: 'Secure document storage and archival with encryption at rest', status: 'connected', logo: '☁️' },
             { name: 'Slack', desc: 'Alert notifications to compliance team channel', status: 'not_connected', logo: '💬' },
             { name: 'Microsoft Teams', desc: 'Compliance alerts and workflow notifications', status: 'not_connected', logo: '📱' },
-            { name: 'FCA Connect', desc: 'FCA regulatory portal integration', status: 'coming_soon', logo: '🏛️' },
-            { name: 'IGRC Platform', desc: 'Enterprise GRC integration', status: 'coming_soon', logo: '⚙️' },
-            { name: 'Companies House', desc: 'Automated entity verification', status: 'coming_soon', logo: '🏢' },
+            { name: 'FCA Connect', desc: 'FCA regulatory portal integration for application submission', status: 'coming_soon', logo: '🏛️' },
+            { name: 'IGRC Platform', desc: 'Enterprise GRC integration for consolidated risk reporting', status: 'coming_soon', logo: '⚙️' },
+            { name: 'Companies House', desc: 'Automated entity verification and director screening', status: 'coming_soon', logo: '🏢' },
           ].map(integration => (
             <div key={integration.name} className="card p-5">
               <div className="flex items-start gap-3">

@@ -366,6 +366,8 @@ model Document {
   name           String
   description    String?
   type           DocumentType @default(OTHER)
+  content        String?      @db.Text
+  version        String?
   fileUrl        String?
   fileKey        String?
   fileSize       Int?

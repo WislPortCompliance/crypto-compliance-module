@@ -99,37 +99,69 @@ export function DashboardClient({
       {/* Top Row: Score + Metrics */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         {/* Compliance Score */}
-        <div className="card p-6 flex items-center gap-6 lg:col-span-1">
-          <ScoreGauge score={score} />
-          <div>
-            <div className="text-sm font-semibold text-gray-700 mb-3">Control Breakdown</div>
-            <div className="space-y-1.5 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></span>
-                <span className="text-gray-600">Compliant</span>
-                <span className="ml-auto font-semibold text-gray-900">{compliantControls}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0"></span>
-                <span className="text-gray-600">Partial</span>
-                <span className="ml-auto font-semibold text-gray-900">{partialControls}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span>
-                <span className="text-gray-600">Non-Compliant</span>
-                <span className="ml-auto font-semibold text-gray-900">{nonCompliantControls}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-gray-400 flex-shrink-0"></span>
-                <span className="text-gray-600">Not Assessed</span>
-                <span className="ml-auto font-semibold text-gray-900">{notAssessedControls}</span>
+        <div className="card p-6 lg:col-span-2">
+          <div className="flex items-center gap-8">
+            <div className="flex-shrink-0">
+              <ScoreGauge score={score} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold text-gray-700 mb-4">Control Breakdown</div>
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2.5 h-2.5 rounded-full bg-green-500 flex-shrink-0"></span>
+                    <span className="text-sm text-gray-600">Compliant</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-sm font-bold text-gray-900">{compliantControls}</span>
+                    <div className="w-16 bg-gray-100 rounded-full h-1.5">
+                      <div className="h-1.5 rounded-full bg-green-500" style={{ width: `${totalControls > 0 ? (compliantControls/totalControls)*100 : 0}%` }} />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 flex-shrink-0"></span>
+                    <span className="text-sm text-gray-600">Partially Compliant</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-sm font-bold text-gray-900">{partialControls}</span>
+                    <div className="w-16 bg-gray-100 rounded-full h-1.5">
+                      <div className="h-1.5 rounded-full bg-amber-500" style={{ width: `${totalControls > 0 ? (partialControls/totalControls)*100 : 0}%` }} />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0"></span>
+                    <span className="text-sm text-gray-600">Non-Compliant</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-sm font-bold text-gray-900">{nonCompliantControls}</span>
+                    <div className="w-16 bg-gray-100 rounded-full h-1.5">
+                      <div className="h-1.5 rounded-full bg-red-500" style={{ width: `${totalControls > 0 ? (nonCompliantControls/totalControls)*100 : 0}%` }} />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2.5 h-2.5 rounded-full bg-gray-400 flex-shrink-0"></span>
+                    <span className="text-sm text-gray-600">Not Assessed</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-sm font-bold text-gray-900">{notAssessedControls}</span>
+                    <div className="w-16 bg-gray-100 rounded-full h-1.5">
+                      <div className="h-1.5 rounded-full bg-gray-400" style={{ width: `${totalControls > 0 ? (notAssessedControls/totalControls)*100 : 0}%` }} />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Metric Cards */}
-        <div className="lg:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="lg:col-span-2 grid grid-cols-2 gap-4">
           <MetricCard label="Total Controls" value={totalControls} sub="across all categories" color="blue" icon="shield" />
           <MetricCard label="Compliant" value={`${Math.round((compliantControls / totalControls) * 100)}%`} sub={`${compliantControls} of ${totalControls}`} color="green" icon="check" />
           <MetricCard label="Overdue Actions" value={overdueActions} sub="require immediate attention" color={overdueActions > 0 ? 'red' : 'green'} icon="warning" />
