@@ -4,7 +4,7 @@ services:
     runtime: node
     region: oregon          # change to frankfurt if EU hosting preferred
     plan: starter           # upgrade to standard for prod; starter is fine for demo
-    buildCommand: npm ci --include=dev && npx prisma generate && npm run build
+    buildCommand: npm ci --include=dev && npx prisma generate && npx tsc --module commonjs --target es2017 --esModuleInterop true --skipLibCheck true prisma/seed.ts && npm run build
     startCommand: bash render-start.sh
     healthCheckPath: /api/health
     envVars:
