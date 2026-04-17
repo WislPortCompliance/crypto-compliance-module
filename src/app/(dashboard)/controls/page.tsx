@@ -17,7 +17,10 @@ export default async function ControlsPage() {
         category: true,
         fcaPrinciple: true,
         owner: { select: { id: true, name: true } },
-        evidence: true,
+        evidence: {
+          include: { document: { select: { id: true, name: true, type: true, mimeType: true } } },
+          orderBy: { addedAt: 'desc' },
+        },
         regulationMappings: {
           include: {
             regulation: { select: { id: true, code: true, name: true, jurisdiction: true } },

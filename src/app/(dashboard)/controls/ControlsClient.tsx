@@ -66,6 +66,18 @@ export function ControlsClient({ controls, categories, principles, regulations }
   const [auditLogs, setAuditLogs] = useState<any[]>([])
   const [loadingAudit, setLoadingAudit] = useState(false)
 
+  // Evidence management
+  const [showEvidenceModal, setShowEvidenceModal] = useState(false)
+  const [evidenceMode, setEvidenceMode] = useState<'note' | 'link' | 'upload'>('note')
+  const [evidenceDescription, setEvidenceDescription] = useState('')
+  const [evidenceDocId, setEvidenceDocId] = useState('')
+  const [evidenceNewDocName, setEvidenceNewDocName] = useState('')
+  const [evidenceNewDocContent, setEvidenceNewDocContent] = useState('')
+  const [evidenceNewDocType, setEvidenceNewDocType] = useState<'EVIDENCE' | 'POLICY' | 'PROCEDURE' | 'REPORT' | 'CERTIFICATE' | 'OTHER'>('EVIDENCE')
+  const [evidenceSaving, setEvidenceSaving] = useState(false)
+  const [orgDocs, setOrgDocs] = useState<any[]>([])
+  const [loadingDocs, setLoadingDocs] = useState(false)
+
   const filtered = useMemo(() => localControls.filter(c => {
     if (filterCat && c.categoryId !== filterCat) return false
     if (filterStatus && c.status !== filterStatus) return false
@@ -200,6 +212,100 @@ export function ControlsClient({ controls, categories, principles, regulations }
   function selectControl(ctrl: any) {
     setSelected(ctrl)
     loadAuditLog(ctrl.id)
+  }
+
+  // ─── Evidence management ─────────────────────────────────────────────────
+  function resetEvidenceForm() {
+    setEvidenceMode('note')
+    setEvidenceDescription('')
+    setEvidenceDocId('')
+    setEvidenceNewDocName('')
+    setEvidenceNewDocContent('')
+    setEvidenceNewDocType('EVIDENCE')
+  }
+
+  async function openEvidenceModal() {
+    resetEvidenceForm()
+    setShowEvidenceModal(true)
+    setLoadingDocs(true)
+    try {
+      const res = await fetch('/api/documents')
+      const data = await res.json()
+      setOrgDocs(Array.isArray(data) ? data : [])
+    } finally {
+      setLoadingDocs(false)
+    }
+  }
+
+  function onEvidenceFileChosen(file: File) {
+    setEvidenceNewDocName(file.name)
+    if (file.size > 2_000_000) {
+      setEvidenceNewDocContent('[File exceeds 2MB inline limit. Paste content or use a link to an external store.]')
+      return
+    }
+    // Read text-based formats as plain text. For binary, show a placeholder.
+    const textTypes = /\.(md|txt|csv|json|xml|yaml|yml|html|sql|log)$/i
+    if (textTypes.test(file.name) || file.type.startsWith('text/')) {
+      const reader = new FileReader()
+      reader.onload = e => setEvidenceNewDocContent(String(e.target?.result ?? ''))
+      reader.readAsText(file)
+    } else {
+      setEvidenceNewDocContent(`[${file.type || 'binary'} file — ${(file.size / 1024).toFixed(1)}KB. Content is not rendered inline. The file metadata is stored.]`)
+    }
+  }
+
+  async function saveEvidence() {
+    if (!selected) return
+    const payload: any = { controlId: selected.id }
+
+    if (evidenceMode === 'note') {
+      if (!evidenceDescription.trim()) return
+      payload.description = evidenceDescription.trim()
+    } else if (evidenceMode === 'link') {
+      if (!evidenceDocId) return
+      payload.documentId = evidenceDocId
+      if (evidenceDescription.trim()) payload.description = evidenceDescription.trim()
+    } else if (evidenceMode === 'upload') {
+      if (!evidenceNewDocName.trim() || !evidenceNewDocContent) return
+      payload.newDocument = {
+        name: evidenceNewDocName.trim(),
+        content: evidenceNewDocContent,
+        type: evidenceNewDocType,
+        mimeType: 'text/markdown',
+      }
+      if (evidenceDescription.trim()) payload.description = evidenceDescription.trim()
+    }
+
+    setEvidenceSaving(true)
+    try {
+      const res = await fetch('/api/control-evidence', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) return
+      const evidence = await res.json()
+      const updated = { ...selected, evidence: [evidence, ...(selected.evidence ?? [])] }
+      setSelected(updated)
+      setLocalControls(prev => prev.map(c => c.id === selected.id ? updated : c))
+      setShowEvidenceModal(false)
+      resetEvidenceForm()
+    } finally {
+      setEvidenceSaving(false)
+    }
+  }
+
+  async function deleteEvidence(evidenceId: string) {
+    if (!selected) return
+    const res = await fetch('/api/control-evidence', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: evidenceId }),
+    })
+    if (!res.ok) return
+    const updated = { ...selected, evidence: (selected.evidence ?? []).filter((ev: any) => ev.id !== evidenceId) }
+    setSelected(updated)
+    setLocalControls(prev => prev.map(c => c.id === selected.id ? updated : c))
   }
 
   return (
@@ -358,19 +464,34 @@ export function ControlsClient({ controls, categories, principles, regulations }
               </div>
             )}
 
-            {/* Evidence */}
+            {/* Evidence — supports the current status */}
             <div>
-              <div className="text-xs font-semibold text-gray-500 uppercase mb-2">Evidence ({selected.evidence?.length ?? 0})</div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs font-semibold text-gray-500 uppercase">
+                  Evidence ({selected.evidence?.length ?? 0})
+                </div>
+                <button
+                  onClick={openEvidenceModal}
+                  className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 px-2 py-0.5 rounded border border-blue-200 hover:bg-blue-50 transition-colors"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                  Add
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-400 mb-2 leading-snug">
+                Attach text, link an existing document, or upload new content that supports the current status.
+              </p>
               {selected.evidence?.length > 0 ? (
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   {selected.evidence.map((ev: any) => (
-                    <div key={ev.id} className="text-xs text-gray-600 flex items-center gap-2">
-                      <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                      {ev.description ?? 'Evidence document'}
-                    </div>
+                    <EvidenceRow key={ev.id} ev={ev} onDelete={() => deleteEvidence(ev.id)} />
                   ))}
                 </div>
-              ) : <p className="text-xs text-gray-400">No evidence attached</p>}
+              ) : (
+                <div className="text-xs text-gray-400 italic py-2 px-3 border border-dashed border-gray-200 rounded-lg text-center">
+                  No evidence attached yet. Click <strong>Add</strong> to attach the first item.
+                </div>
+              )}
             </div>
 
             {/* Audit Trail */}
@@ -509,6 +630,185 @@ export function ControlsClient({ controls, categories, principles, regulations }
         </div>
       )}
 
+      {/* Add Evidence Modal */}
+      {showEvidenceModal && selected && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Add Evidence</h2>
+              <p className="text-sm text-gray-500 mt-0.5">
+                Attach evidence to <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">{selected.controlRef}</span> — {selected.name}
+              </p>
+            </div>
+
+            {/* Mode tabs */}
+            <div className="flex gap-1 p-1 bg-gray-100 rounded-lg mb-4">
+              {([
+                { id: 'note', label: 'Text Note', desc: 'Add a commentary or finding' },
+                { id: 'link', label: 'Link Document', desc: 'Point to an existing file' },
+                { id: 'upload', label: 'New Document', desc: 'Upload or paste new content' },
+              ] as const).map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => setEvidenceMode(m.id)}
+                  className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    evidenceMode === m.id ? 'bg-white shadow-sm text-blue-700' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Mode: Note */}
+            {evidenceMode === 'note' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Note / Finding *</label>
+                  <textarea
+                    required
+                    rows={6}
+                    placeholder="e.g. Reviewed transaction monitoring rules on 14 April 2026 with MLRO. All 12 rules active and thresholds within policy. Two false-positive cases closed under review number FP-2026-04-12."
+                    value={evidenceDescription}
+                    onChange={e => setEvidenceDescription(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Plain text. No file or link — use this to capture narrative evidence, meeting outcomes, or review findings.</p>
+                </div>
+              </div>
+            )}
+
+            {/* Mode: Link */}
+            {evidenceMode === 'link' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Select an existing document *</label>
+                  {loadingDocs ? (
+                    <div className="text-sm text-gray-400 py-2">Loading documents…</div>
+                  ) : (
+                    <select
+                      required
+                      value={evidenceDocId}
+                      onChange={e => setEvidenceDocId(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    >
+                      <option value="">Choose a document…</option>
+                      {orgDocs.filter(d => !d.isTemplate).map(d => (
+                        <option key={d.id} value={d.id}>{d.name} · {d.type}</option>
+                      ))}
+                    </select>
+                  )}
+                  <p className="text-xs text-gray-400 mt-1">Only live documents are listed (templates are excluded).</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Why this document supports the status"
+                    value={evidenceDescription}
+                    onChange={e => setEvidenceDescription(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Mode: Upload */}
+            {evidenceMode === 'upload' && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Document name *</label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="e.g. Q1 2026 TM Review"
+                      value={evidenceNewDocName}
+                      onChange={e => setEvidenceNewDocName(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                    <select
+                      value={evidenceNewDocType}
+                      onChange={e => setEvidenceNewDocType(e.target.value as any)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    >
+                      <option value="EVIDENCE">Evidence</option>
+                      <option value="POLICY">Policy</option>
+                      <option value="PROCEDURE">Procedure</option>
+                      <option value="REPORT">Report</option>
+                      <option value="CERTIFICATE">Certificate</option>
+                      <option value="OTHER">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Upload file (optional)</label>
+                  <input
+                    type="file"
+                    accept=".md,.txt,.csv,.json,.xml,.yaml,.yml,.html,.sql,.log,.pdf,.doc,.docx"
+                    onChange={e => {
+                      const f = e.target.files?.[0]
+                      if (f) onEvidenceFileChosen(f)
+                    }}
+                    className="block w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Text files (.md .txt .csv .json .xml .yaml .html) are read inline. Max 2MB.</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Content *</label>
+                  <textarea
+                    required
+                    rows={8}
+                    placeholder="Paste markdown or plain-text content here. Sections, tables, and checklists are supported."
+                    value={evidenceNewDocContent}
+                    onChange={e => setEvidenceNewDocContent(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-y font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Short description (optional)</label>
+                  <input
+                    type="text"
+                    placeholder="One-line summary of why this supports the status"
+                    value={evidenceDescription}
+                    onChange={e => setEvidenceDescription(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-5">
+              <button
+                type="button"
+                onClick={() => { setShowEvidenceModal(false); resetEvidenceForm() }}
+                className="flex-1 btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={saveEvidence}
+                disabled={evidenceSaving || (
+                  evidenceMode === 'note' ? !evidenceDescription.trim() :
+                  evidenceMode === 'link' ? !evidenceDocId :
+                  !evidenceNewDocName.trim() || !evidenceNewDocContent
+                )}
+                className="flex-1 btn-primary disabled:opacity-50"
+              >
+                {evidenceSaving ? 'Saving…' : 'Add Evidence'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       {showDelete && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -563,6 +863,47 @@ function DetailRow({ label, value }: { label: string; value?: string | null }) {
     <div>
       <div className="text-xs font-semibold text-gray-500 uppercase mb-0.5">{label}</div>
       <div className="text-sm text-gray-800">{value ?? '—'}</div>
+    </div>
+  )
+}
+
+function EvidenceRow({ ev, onDelete }: { ev: any; onDelete: () => void }) {
+  const hasDoc = !!ev.document
+  const hasText = !!ev.description
+  const icon = hasDoc ? (
+    <svg className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+  ) : (
+    <svg className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+  )
+  const added = ev.addedAt ? new Date(ev.addedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
+  return (
+    <div className="group relative p-2.5 rounded-md border border-gray-100 bg-gray-50/60 hover:bg-white hover:border-gray-200 transition-colors">
+      <div className="flex items-start gap-2">
+        {icon}
+        <div className="flex-1 min-w-0">
+          {hasDoc && (
+            <Link href={`/documents/${ev.document.id}`} className="text-xs font-medium text-blue-700 hover:text-blue-900 hover:underline truncate block">
+              {ev.document.name}
+            </Link>
+          )}
+          {hasText && (
+            <div className={`text-xs ${hasDoc ? 'text-gray-500 mt-0.5' : 'text-gray-700'} leading-snug whitespace-pre-wrap`}>
+              {ev.description}
+            </div>
+          )}
+          <div className="text-[10px] text-gray-400 mt-1">
+            {hasDoc && hasText ? 'Linked document + note' : hasDoc ? 'Linked document' : 'Text note'}
+            {added && <> · added {added}</>}
+          </div>
+        </div>
+        <button
+          onClick={onDelete}
+          className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+          title="Remove evidence"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
     </div>
   )
 }
