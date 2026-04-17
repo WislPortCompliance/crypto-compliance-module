@@ -3,14 +3,19 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const orgId = (session.user as any).organisationId
 
+  // Optional ?framework=FCA|MICA filter. Defaults to FCA for backwards compat.
+  const { searchParams } = new URL(req.url)
+  const framework = (searchParams.get('framework') || 'FCA').toUpperCase()
+  const frameworkFilter = framework === 'MICA' ? 'MICA' : 'FCA'
+
   const stages = await prisma.fCAApplicationStage.findMany({
-    where: { organisationId: orgId },
+    where: { organisationId: orgId, framework: frameworkFilter as any },
     include: {
       requirements: {
         orderBy: { createdAt: 'asc' },

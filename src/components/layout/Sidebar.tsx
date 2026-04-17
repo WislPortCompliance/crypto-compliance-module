@@ -13,9 +13,10 @@ const navItems = [
     ],
   },
   {
-    label: 'FCA Application',
+    label: 'Authorisation',
     items: [
-      { href: '/fca-tracker', label: 'Application Tracker', icon: ChecklistIcon },
+      { href: '/fca-tracker', label: 'FCA Tracker', icon: ChecklistIcon },
+      { href: '/mica-tracker', label: 'MiCA Tracker', icon: ChecklistIcon },
       { href: '/compliance-map', label: 'Compliance Map', icon: MapIcon },
     ],
   },

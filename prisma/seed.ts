@@ -710,6 +710,241 @@ async function main() {
     }
   }
 
+  // ═════ MiCA CASP Authorisation Tracker ════════════════════════════════════
+  // Parallel to the FCA builder. Where MiCA requirements overlap with FCA
+  // (AML, governance, risk, custody) we reuse the FCA template by pointing
+  // the requirement's templateId at an existing tpl-req-* document. Only
+  // MiCA-unique requirements get fresh templates.
+  const micaStages = [
+    {
+      id: 'mica-stage-1',
+      stage: ApplicationStage.PRE_APPLICATION,
+      framework: 'MICA' as const,
+      title: 'Pre-Application & Regulatory Perimeter',
+      description: 'Scoping services against MiCA Annex I, NCA engagement, and gap analysis against MiCA RTS/ITS.',
+      status: StageStatus.COMPLETE,
+      order: 1,
+      completedAt: new Date('2026-02-15'),
+      targetDate: new Date('2026-02-28'),
+      requirements: [
+        // title, status, templateRefReused (if any)
+        { title: 'MiCA services scoping (Annex I analysis)',        status: StageStatus.COMPLETE,      reuse: null },
+        { title: 'NCA pre-application engagement',                  status: StageStatus.COMPLETE,      reuse: 'tpl-req-stage-1-3' },
+        { title: 'Gap analysis against MiCA RTS/ITS',               status: StageStatus.COMPLETE,      reuse: 'tpl-req-stage-1-2' },
+        { title: 'Project plan & resource allocation',              status: StageStatus.COMPLETE,      reuse: 'tpl-req-stage-1-4' },
+      ],
+    },
+    {
+      id: 'mica-stage-2',
+      stage: ApplicationStage.BUSINESS_PLAN,
+      framework: 'MICA' as const,
+      title: 'Programme of Operations & Governance',
+      description: 'Programme of operations (Art. 62(2)(a)), governance arrangements (Art. 68), and conflicts-of-interest policy (Art. 72).',
+      status: StageStatus.COMPLETE,
+      order: 2,
+      completedAt: new Date('2026-03-31'),
+      targetDate: new Date('2026-03-31'),
+      requirements: [
+        { title: 'Programme of operations (Art. 62(2)(a))',         status: StageStatus.COMPLETE,      reuse: null },
+        { title: 'Governance arrangements (Art. 68)',               status: StageStatus.COMPLETE,      reuse: 'tpl-req-stage-2-1' },
+        { title: 'Senior management fit & proper (Art. 68(1))',     status: StageStatus.COMPLETE,      reuse: 'tpl-req-stage-2-2' },
+        { title: 'Board composition & independence (Art. 68(5))',   status: StageStatus.COMPLETE,      reuse: 'tpl-req-stage-2-1' },
+        { title: 'Conflicts-of-interest policy (Art. 72)',          status: StageStatus.COMPLETE,      reuse: 'tpl-req-stage-2-5' },
+      ],
+    },
+    {
+      id: 'mica-stage-3',
+      stage: ApplicationStage.FINANCIAL_RESOURCES,
+      framework: 'MICA' as const,
+      title: 'Prudential Requirements (Art. 67)',
+      description: 'Own funds calculation per MiCA Art. 67 (€50k / €125k / €150k tiers), insurance or guarantees, financial projections, and wind-down planning.',
+      status: StageStatus.IN_PROGRESS,
+      order: 3,
+      targetDate: new Date('2026-06-30'),
+      requirements: [
+        { title: 'Own funds calculation (MiCA Art. 67)',            status: StageStatus.COMPLETE,      reuse: null },
+        { title: 'Professional indemnity insurance / guarantees',   status: StageStatus.COMPLETE,      reuse: 'tpl-req-stage-3-4' },
+        { title: 'Financial projections (3-year)',                  status: StageStatus.IN_PROGRESS,   reuse: 'tpl-req-stage-3-1' },
+        { title: 'Wind-down plan (Art. 73 alignment)',              status: StageStatus.NOT_STARTED,   reuse: 'tpl-req-stage-3-3' },
+      ],
+    },
+    {
+      id: 'mica-stage-4',
+      stage: ApplicationStage.SYSTEMS_CONTROLS,
+      framework: 'MICA' as const,
+      title: 'ICT & Operational Resilience (DORA)',
+      description: 'ICT risk management framework, cyber resilience and business continuity per DORA (2022/2554) and MiCA Art. 68(7).',
+      status: StageStatus.IN_PROGRESS,
+      order: 4,
+      targetDate: new Date('2026-07-31'),
+      requirements: [
+        { title: 'ICT risk-management framework (DORA)',            status: StageStatus.IN_PROGRESS,   reuse: null },
+        { title: 'Cybersecurity & operational-resilience policy',   status: StageStatus.COMPLETE,      reuse: 'tpl-req-stage-4-4' },
+        { title: 'Business continuity & disaster recovery',         status: StageStatus.IN_PROGRESS,   reuse: null },
+        { title: 'Outsourcing arrangements (Art. 73)',              status: StageStatus.NOT_STARTED,   reuse: null },
+      ],
+    },
+    {
+      id: 'mica-stage-5',
+      stage: ApplicationStage.AML_CTF,
+      framework: 'MICA' as const,
+      title: 'AML/CTF under AMLD6 & TFR 2023/1113',
+      description: 'AML/CTF programme aligned to AMLD6 and the EU Transfer-of-Funds Regulation (Travel Rule equivalent).',
+      status: StageStatus.IN_PROGRESS,
+      order: 5,
+      targetDate: new Date('2026-08-31'),
+      requirements: [
+        { title: 'AML policy suite (AMLD6)',                        status: StageStatus.COMPLETE,      reuse: 'tpl-req-stage-5-0' },
+        { title: 'CDD & KYC procedures (AMLD6 Art. 13)',            status: StageStatus.COMPLETE,      reuse: 'tpl-req-stage-5-1' },
+        { title: 'Travel Rule (TFR 2023/1113)',                     status: StageStatus.IN_PROGRESS,   reuse: 'tpl-req-stage-5-2' },
+        { title: 'MLRO appointment & NCA notification',             status: StageStatus.COMPLETE,      reuse: 'tpl-req-stage-5-4' },
+      ],
+    },
+    {
+      id: 'mica-stage-6',
+      stage: ApplicationStage.CONSUMER_PROTECTION,
+      framework: 'MICA' as const,
+      title: 'Client Protection & Asset Safeguarding',
+      description: 'Client asset segregation and safeguarding (Art. 70), complaint handling (Art. 71), and market abuse prevention (Art. 92).',
+      status: StageStatus.NOT_STARTED,
+      order: 6,
+      targetDate: new Date('2026-09-30'),
+      requirements: [
+        { title: 'Client asset segregation (Art. 70)',              status: StageStatus.NOT_STARTED,   reuse: null },
+        { title: 'Safeguarding rules & custody IT (Art. 70(3))',    status: StageStatus.NOT_STARTED,   reuse: null },
+        { title: 'Complaints handling procedure (Art. 71)',         status: StageStatus.NOT_STARTED,   reuse: 'tpl-req-stage-6-4' },
+        { title: 'Consumer disclosures & pre-contract info (Art. 66)', status: StageStatus.NOT_STARTED, reuse: 'tpl-req-stage-6-1' },
+        { title: 'Market-abuse prevention (Art. 92)',               status: StageStatus.NOT_STARTED,   reuse: null },
+      ],
+    },
+    {
+      id: 'mica-stage-7',
+      stage: ApplicationStage.SUBMISSION,
+      framework: 'MICA' as const,
+      title: 'NCA Application & White Paper',
+      description: 'Application dossier to the national competent authority, and (if applicable) crypto-asset white paper for ART/EMT issuance.',
+      status: StageStatus.NOT_STARTED,
+      order: 7,
+      targetDate: new Date('2026-11-30'),
+      requirements: [
+        { title: 'Application dossier (Art. 62)',                   status: StageStatus.NOT_STARTED,   reuse: 'tpl-req-stage-7-1' },
+        { title: 'Crypto-asset white paper (if ART/EMT in scope)',  status: StageStatus.NOT_STARTED,   reuse: null },
+        { title: 'NCA submission via national portal',              status: StageStatus.NOT_STARTED,   reuse: 'tpl-req-stage-7-0' },
+        { title: 'Submission acknowledgement & Q&A',                status: StageStatus.NOT_STARTED,   reuse: 'tpl-req-stage-7-4' },
+      ],
+    },
+    {
+      id: 'mica-stage-8',
+      stage: ApplicationStage.POST_APPROVAL,
+      framework: 'MICA' as const,
+      title: 'Passporting & Ongoing Obligations',
+      description: 'EEA passporting (Art. 65), ESMA register entry, ongoing reporting, and change-in-control notifications.',
+      status: StageStatus.NOT_STARTED,
+      order: 8,
+      targetDate: null,
+      requirements: [
+        { title: 'Ongoing reporting obligations',                   status: StageStatus.NOT_STARTED,   reuse: 'tpl-req-stage-8-1' },
+        { title: 'EEA passporting notifications (Art. 65)',         status: StageStatus.NOT_STARTED,   reuse: null },
+        { title: 'Change-in-control notifications (Art. 83)',       status: StageStatus.NOT_STARTED,   reuse: 'tpl-req-stage-8-2' },
+        { title: 'ESMA register entry & ongoing data provision',    status: StageStatus.NOT_STARTED,   reuse: 'tpl-req-stage-8-0' },
+      ],
+    },
+  ]
+
+  // MiCA article references per requirement id (same key pattern as FCA map)
+  const reqMiCAReferences: Record<string, string> = {
+    'req-mica-stage-1-0': 'MiCA Art. 60 (perimeter) · Annex I',
+    'req-mica-stage-1-1': 'MiCA Art. 62 (pre-application)',
+    'req-mica-stage-1-2': 'MiCA RTS/ITS (ESMA)',
+    'req-mica-stage-1-3': 'MiCA Art. 62 — project plan',
+    'req-mica-stage-2-0': 'MiCA Art. 62(2)(a)',
+    'req-mica-stage-2-1': 'MiCA Art. 68 — governance',
+    'req-mica-stage-2-2': 'MiCA Art. 68(1) — suitability',
+    'req-mica-stage-2-3': 'MiCA Art. 68(5) — board',
+    'req-mica-stage-2-4': 'MiCA Art. 72 — conflicts',
+    'req-mica-stage-3-0': 'MiCA Art. 67 — own funds',
+    'req-mica-stage-3-1': 'MiCA Art. 67(2) — insurance',
+    'req-mica-stage-3-2': 'MiCA Art. 67 · COND 2.4',
+    'req-mica-stage-3-3': 'MiCA Art. 73 — wind-down',
+    'req-mica-stage-4-0': 'DORA Reg. 2022/2554 · MiCA Art. 68(7)',
+    'req-mica-stage-4-1': 'DORA Art. 6 · ENISA guidelines',
+    'req-mica-stage-4-2': 'DORA Art. 11 — BCP',
+    'req-mica-stage-4-3': 'MiCA Art. 73 — outsourcing',
+    'req-mica-stage-5-0': 'AMLD6 · MiCA Art. 68(8)',
+    'req-mica-stage-5-1': 'AMLD6 Art. 13 — CDD',
+    'req-mica-stage-5-2': 'TFR 2023/1113 — Travel Rule',
+    'req-mica-stage-5-3': 'AMLD6 Art. 8 — MLRO',
+    'req-mica-stage-6-0': 'MiCA Art. 70 — segregation',
+    'req-mica-stage-6-1': 'MiCA Art. 70(3) — custody IT',
+    'req-mica-stage-6-2': 'MiCA Art. 71 — complaints',
+    'req-mica-stage-6-3': 'MiCA Art. 66 — disclosures',
+    'req-mica-stage-6-4': 'MiCA Art. 92 — market abuse',
+    'req-mica-stage-7-0': 'MiCA Art. 62 — dossier',
+    'req-mica-stage-7-1': 'MiCA Art. 6-8 — white paper',
+    'req-mica-stage-7-2': 'MiCA Art. 62-63 — submission',
+    'req-mica-stage-7-3': 'MiCA Art. 63 — acknowledgement',
+    'req-mica-stage-8-0': 'MiCA Art. 62(5) · Art. 109',
+    'req-mica-stage-8-1': 'MiCA Art. 65 — passporting',
+    'req-mica-stage-8-2': 'MiCA Art. 83 — change of control',
+    'req-mica-stage-8-3': 'MiCA Art. 109 — ESMA register',
+  }
+
+  for (const stageData of micaStages) {
+    const { requirements, ...stageFields } = stageData
+    const stage = await prisma.fCAApplicationStage.upsert({
+      where: { id: stageFields.id },
+      update: { status: stageFields.status, framework: stageFields.framework },
+      create: { ...stageFields, organisationId: org.id },
+    })
+
+    for (let i = 0; i < requirements.length; i++) {
+      const reqId = `req-${stageFields.id}-${i}`
+      const fcaReference = reqMiCAReferences[reqId] ?? null
+      const reuseTemplateId = requirements[i].reuse
+
+      let templateId: string
+      if (reuseTemplateId) {
+        // Reuse an FCA template — just reference its ID, no new Document created.
+        templateId = reuseTemplateId
+      } else {
+        // MiCA-specific template — generate a fresh Document for this requirement.
+        templateId = `tpl-${reqId}`
+        const tmpl = generateTemplate(requirements[i].title, stageFields.stage, stageFields.title, i)
+        await prisma.document.upsert({
+          where: { id: templateId },
+          update: {
+            name: tmpl.name,
+            type: tmpl.type,
+            content: tmpl.content,
+            isTemplate: true,
+          },
+          create: {
+            id: templateId,
+            name: tmpl.name,
+            description: `MiCA-specific template for: ${requirements[i].title}`,
+            type: tmpl.type,
+            content: tmpl.content,
+            isTemplate: true,
+            organisationId: org.id,
+          },
+        })
+      }
+
+      await prisma.stageRequirement.upsert({
+        where: { id: reqId },
+        update: { status: requirements[i].status, templateId, fcaReference },
+        create: {
+          id: reqId,
+          stageId: stage.id,
+          title: requirements[i].title,
+          status: requirements[i].status,
+          templateId,
+          fcaReference,
+        },
+      })
+    }
+  }
+
   // ─── Regulations ──────────────────────────────────────────────────────────
   const regulations = [
     // UK
@@ -750,6 +985,9 @@ async function main() {
     { id: 'reg-crs', code: 'CRS_CARF', name: 'CRS/CARF', fullName: 'Common Reporting Standard / Crypto-Asset Reporting Framework', jurisdiction: 'Global', regulator: 'OECD', description: 'OECD automatic exchange of information standard, now extended to crypto via CARF framework.' },
     { id: 'reg-wolfsburg', code: 'WOLFSBURG', name: 'Wolfsburg Principles', fullName: 'Wolfsburg Group AML/CTF Principles for Correspondent Banking', jurisdiction: 'Global', regulator: 'Wolfsburg Group', description: 'Industry standards for AML/CTF in correspondent banking relationships, increasingly applied to crypto.' },
     { id: 'reg-basel', code: 'BASEL_CRYPTO', name: 'Basel Crypto Standards', fullName: 'Basel Committee Prudential Standard for Crypto-Asset Exposures', jurisdiction: 'Global', regulator: 'BCBS', description: 'Basel Committee on Banking Supervision prudential treatment of crypto-asset exposures, establishing capital requirements and classification framework.' },
+    // ─── ISO Standards — information security & blockchain governance ─────
+    { id: 'reg-iso27001', code: 'ISO_27001', name: 'ISO/IEC 27001', fullName: 'ISO/IEC 27001:2022 — Information Security Management Systems', jurisdiction: 'Global', regulator: 'ISO/IEC', description: 'International standard for information security management systems (ISMS). 2022 edition defines 93 controls across Annex A (organisational, people, physical, technological). Widely treated as a floor by FCA-supervised firms for technology and data-protection controls.' },
+    { id: 'reg-iso23635', code: 'ISO_23635', name: 'ISO/TS 23635', fullName: 'ISO/TS 23635:2022 — Blockchain and DLT Governance Guidelines', jurisdiction: 'Global', regulator: 'ISO', description: 'Technical specification providing guiding principles and a framework for the governance of blockchain and distributed ledger technology systems — covering accountability, risk, stakeholder rights, and alignment with regulatory and supervisory contexts. Directly relevant to crypto custody, smart-contract and on-chain control design.' },
   ]
 
   for (const reg of regulations) {
@@ -800,6 +1038,9 @@ async function main() {
     { id: 'cme-23', regulationId: 'reg-crs', applicable: true, status: ControlStatus.PARTIALLY_COMPLIANT, notes: 'Applicable under CARF framework for crypto-asset reporting. Full CARF implementation due 2027.' },
     { id: 'cme-24', regulationId: 'reg-wolfsburg', applicable: true, status: ControlStatus.PARTIALLY_COMPLIANT, notes: 'Applicable for correspondent banking and institutional relationships.' },
     { id: 'cme-25', regulationId: 'reg-basel', applicable: false, status: ControlStatus.NOT_ASSESSED, notes: 'Not directly applicable — applies to banks with crypto exposures. Monitor as prudential framework may extend to CASPs.' },
+    // ISO
+    { id: 'cme-26', regulationId: 'reg-iso27001', applicable: true, status: ControlStatus.PARTIALLY_COMPLIANT, notes: 'Applicable. ISMS aligned to ISO/IEC 27001:2022 Annex A. Formal certification targeted within 6 months of FCA authorisation.' },
+    { id: 'cme-27', regulationId: 'reg-iso23635', applicable: true, status: ControlStatus.PARTIALLY_COMPLIANT, notes: 'Applicable as a DLT-based cryptoasset service provider. Governance framework mapped to ISO/TS 23635 guidelines; gap assessment in progress.' },
   ]
 
   // Delete and recreate compliance map entries to avoid ID conflicts across seeds
@@ -884,6 +1125,44 @@ async function main() {
     {
       regulationId: 'reg-basel',
       controlIds: ['ctrl-022', 'ctrl-023', 'ctrl-024', 'ctrl-027', 'ctrl-045'],
+    },
+    // ─── ISO/IEC 27001:2022 — broad ISMS coverage ────────────────────────
+    // Maps to controls where information-security, access, crypto, logging,
+    // continuity, supplier-management, or incident-response clauses apply.
+    {
+      regulationId: 'reg-iso27001',
+      controlIds: [
+        // Information security / technology (A.8.*, A.5.15-5.24 access & supplier)
+        'ctrl-027', 'ctrl-028', 'ctrl-029', 'ctrl-030', 'ctrl-031', 'ctrl-032',
+        // AML systems rely on ISMS posture (A.5.1, A.8.15 logging, A.8.16 monitoring)
+        'ctrl-003', 'ctrl-006', 'ctrl-008',
+        // Custody key-management (A.8.24 cryptography)
+        'ctrl-022', 'ctrl-023', 'ctrl-024', 'ctrl-026',
+        // Governance — policies, roles, segregation (A.5.1, A.5.2, A.5.3)
+        'ctrl-011', 'ctrl-013', 'ctrl-015',
+        // Operations — documented procedures, logging (A.5.37, A.8.15)
+        'ctrl-033', 'ctrl-034',
+        // Data protection (A.5.34)
+        'ctrl-042', 'ctrl-043', 'ctrl-044',
+        // Incident response & BCP overlap
+        'ctrl-048',
+      ],
+    },
+    // ─── ISO/TS 23635:2022 — blockchain & DLT governance ─────────────────
+    // Maps to controls where DLT-specific governance, key management,
+    // on-chain risk, or smart-contract assurance applies.
+    {
+      regulationId: 'reg-iso23635',
+      controlIds: [
+        // Custody & key management (core DLT governance concern)
+        'ctrl-022', 'ctrl-023', 'ctrl-024', 'ctrl-025', 'ctrl-026',
+        // Technology — smart contracts, on-chain infra
+        'ctrl-027', 'ctrl-029', 'ctrl-031',
+        // AML — blockchain analytics & on-chain tracing
+        'ctrl-005', 'ctrl-008',
+        // Governance — DLT-specific board oversight
+        'ctrl-011', 'ctrl-015', 'ctrl-049',
+      ],
     },
   ]
 

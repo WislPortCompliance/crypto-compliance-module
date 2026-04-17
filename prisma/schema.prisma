@@ -69,6 +69,11 @@ enum ApplicationStage {
   POST_APPROVAL
 }
 
+enum AuthorisationFramework {
+  FCA
+  MICA
+}
+
 // ─── Auth Models (NextAuth) ───────────────────────────────────────────────────
 
 model User {
@@ -292,23 +297,24 @@ model ControlEvidence {
 // ─── FCA Application ──────────────────────────────────────────────────────────
 
 model FCAApplicationStage {
-  id             String           @id @default(cuid())
+  id             String                 @id @default(cuid())
   stage          ApplicationStage
+  framework      AuthorisationFramework @default(FCA)
   title          String
-  description    String?          @db.Text
-  status         StageStatus      @default(NOT_STARTED)
+  description    String?                @db.Text
+  status         StageStatus            @default(NOT_STARTED)
   order          Int
   organisationId String
-  organisation   Organisation     @relation(fields: [organisationId], references: [id])
+  organisation   Organisation           @relation(fields: [organisationId], references: [id])
   completedAt    DateTime?
   targetDate     DateTime?
-  notes          String?          @db.Text
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  notes          String?                @db.Text
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
 
   requirements StageRequirement[]
 
-  @@unique([organisationId, stage])
+  @@unique([organisationId, stage, framework])
   @@map("fca_application_stages")
 }
 
