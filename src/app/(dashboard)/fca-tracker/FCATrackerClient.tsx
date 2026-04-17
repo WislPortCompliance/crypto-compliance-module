@@ -26,12 +26,25 @@ const stageDescriptions: Record<string, string> = {
   POST_APPROVAL: 'Ongoing compliance obligations post-authorisation',
 }
 
-export function FCATrackerClient({ stages, framework = 'FCA' }: { stages: any[]; framework?: 'FCA' | 'MICA' }) {
+const DEFAULT_TITLES: Record<string, { title: string; subtitle: string; shortName: string }> = {
+  FCA:   { title: 'FCA Application Tracker',                subtitle: 'UK Cryptoasset Authorisation Journey',                                 shortName: 'FCA' },
+  MICA:  { title: 'MiCA CASP Authorisation Tracker',        subtitle: 'EU Markets in Crypto-Assets — CASP Licensing Journey',                 shortName: 'MiCA' },
+  GFSC:  { title: 'Gibraltar DLT Authorisation',            subtitle: 'GFSC Distributed Ledger Technology Provider Licence',                  shortName: 'GFSC' },
+  MAS:   { title: 'MAS Payment Services Act Tracker',       subtitle: 'Singapore Digital Payment Token Licence',                              shortName: 'MAS' },
+  VARA:  { title: 'VARA Authorisation (Dubai)',             subtitle: 'UAE Virtual Assets Regulatory Authority Licensing',                    shortName: 'VARA' },
+  FINMA: { title: 'FINMA Authorisation (Switzerland)',      subtitle: 'Swiss Financial Market Supervisory Authority',                         shortName: 'FINMA' },
+  SFC:   { title: 'SFC VATP Licensing (Hong Kong)',         subtitle: 'Securities and Futures Commission — Virtual Asset Trading Platform',   shortName: 'SFC' },
+  ASIC:  { title: 'ASIC AFS Licensing (Australia)',         subtitle: 'Australian Securities and Investments Commission — Digital Assets',    shortName: 'ASIC' },
+  CSA:   { title: 'CSA + FINTRAC Registration (Canada)',    subtitle: 'Canadian Securities Administrators Pre-Registration + FINTRAC MSB',    shortName: 'CSA' },
+  BSA:   { title: 'FinCEN BSA Registration (US)',           subtitle: 'US Money Services Business under the Bank Secrecy Act',                shortName: 'FinCEN' },
+}
+
+export function FCATrackerClient({ stages, framework = 'FCA' }: { stages: any[]; framework?: string }) {
   const [view, setView] = useState<'stages' | 'matrix'>('stages')
-  const trackerTitle = framework === 'MICA' ? 'MiCA CASP Authorisation Tracker' : 'FCA Application Tracker'
-  const trackerSubtitle = framework === 'MICA'
-    ? 'EU Markets in Crypto-Assets — CASP Licensing Journey'
-    : 'UK Cryptoasset Authorisation Journey'
+  const meta = DEFAULT_TITLES[framework] ?? DEFAULT_TITLES.FCA
+  const trackerTitle = meta.title
+  const trackerSubtitle = meta.subtitle
+  const matrixLabel = `${meta.shortName} Requirements Matrix`
   const [activeStage, setActiveStage] = useState<string>(stages.find(s => s.status === 'IN_PROGRESS')?.id ?? stages[0]?.id)
   const [updatingReq, setUpdatingReq] = useState<string | null>(null)
   const [localStages, setLocalStages] = useState(stages)
@@ -118,7 +131,7 @@ export function FCATrackerClient({ stages, framework = 'FCA' }: { stages: any[];
           onClick={() => setView('matrix')}
           className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${view === 'matrix' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
         >
-          {framework === 'MICA' ? 'MiCA Requirements Matrix' : 'FCA Requirements Matrix'}
+          {matrixLabel}
           <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-bold">{totalReqs}</span>
         </button>
       </div>

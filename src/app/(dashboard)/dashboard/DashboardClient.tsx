@@ -181,6 +181,15 @@ export function DashboardClient({
         </div>
       )}
 
+      {/* Other authorisations (GFSC, MAS, VARA, FINMA, SFC, ASIC, CSA, BSA) */}
+      {(showFca || showMica) && (
+        <div className="flex items-center justify-end">
+          <Link href="/authorisation" className="text-sm text-blue-600 font-medium hover:underline">
+            View all authorisation trackers →
+          </Link>
+        </div>
+      )}
+
       {/* Bottom Row: Alerts + Actions + Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Alerts */}

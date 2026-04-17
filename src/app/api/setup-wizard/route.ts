@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { provisionNewTracker, seedSharedTemplates, type Framework } from '@/lib/authorisation/tracker-data'
 
 // Mirror of computeApplicableRegulations from SetupWizardClient — kept server-side
 // so we can persist to ComplianceMapEntry without trusting the client.
@@ -244,19 +245,44 @@ export async function POST(req: NextRequest) {
     demoted = result.count
   }
 
-  // ─── Authorisation Trackers: auto-provision shells when applicable ──────
-  // If the user selects UK (or HQ=GB) and has no FCA stages, create the 8-stage
-  // FCA tracker shell. Likewise for EU selections and the MiCA tracker.
-  // Existing stages are never overwritten — this only provisions if missing.
+  // ─── Authorisation Trackers: auto-provision on applicable jurisdictions ──
+  // FCA and MiCA keep the lightweight shell provisioning (they're content-rich
+  // in the main seed; brand-new orgs get 8-stage shells until the Phase 2
+  // refactor pulls FCA/MiCA into the shared module).
+  // Priority 10 new trackers (GFSC, MAS, VARA, FINMA, SFC, ASIC, CSA, BSA)
+  // are provisioned from the shared tracker-data module with full requirement
+  // content when the relevant jurisdiction is selected.
   const locs = new Set<string>(locations ?? [])
   const hq = body.hqCountry ?? 'GB'
   let fcaStagesCreated = 0
   let micaStagesCreated = 0
+  const newTrackersProvisioned: Record<string, number> = {}
   if (locs.has('GB') || hq === 'GB') {
     fcaStagesCreated = await provisionTrackerIfMissing(orgId, 'FCA')
   }
   if (locs.has('DE') || locs.has('FR') || locs.has('IT') || locs.has('EU')) {
     micaStagesCreated = await provisionTrackerIfMissing(orgId, 'MICA')
+  }
+  // Seed shared templates (idempotent) before any new tracker provisioning,
+  // since the new trackers' requirements reference them as templateId.
+  await seedSharedTemplates(prisma, orgId)
+
+  // Jurisdiction → framework map for the new trackers.
+  const newTrackerTriggers: [string, Framework][] = [
+    ['GI', 'GFSC'],
+    ['SG', 'MAS'],
+    ['AE', 'VARA'],
+    ['CH', 'FINMA'],
+    ['HK', 'SFC'],
+    ['AU', 'ASIC'],
+    ['CA', 'CSA'],
+    ['US', 'BSA'],
+  ]
+  for (const [locCode, framework] of newTrackerTriggers) {
+    if (locs.has(locCode)) {
+      const created = await provisionNewTracker(prisma, orgId, framework, { includeDemo: false })
+      if (created > 0) newTrackersProvisioned[framework] = created
+    }
   }
 
   // Unmatched = regulations the wizard said apply but which we don't have in DB.
@@ -277,6 +303,7 @@ export async function POST(req: NextRequest) {
         complianceMapDemoted: demoted,
         fcaStagesProvisioned: fcaStagesCreated,
         micaStagesProvisioned: micaStagesCreated,
+        newTrackersProvisioned,
         applicableRegulations: applicableNames,
       },
       userId: (session.user as any).id,
@@ -290,6 +317,7 @@ export async function POST(req: NextRequest) {
     complianceMapDemoted: demoted,
     fcaStagesProvisioned: fcaStagesCreated,
     micaStagesProvisioned: micaStagesCreated,
+    newTrackersProvisioned,
     applicableRegulations: applicableNames,
     unmatchedRegulations: unmatched,
   })

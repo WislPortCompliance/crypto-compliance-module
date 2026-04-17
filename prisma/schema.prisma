@@ -70,8 +70,16 @@ enum ApplicationStage {
 }
 
 enum AuthorisationFramework {
-  FCA
-  MICA
+  FCA    // UK — Financial Conduct Authority, Cryptoassets Regime 2026
+  MICA   // EU — Markets in Crypto-Assets (Regulation 2023/1114)
+  GFSC   // Gibraltar — Financial Services Commission DLT Regime
+  MAS    // Singapore — Monetary Authority Payment Services Act (DPT)
+  VARA   // UAE (Dubai) — Virtual Assets Regulatory Authority
+  FINMA  // Switzerland — Financial Market Supervisory Authority
+  SFC    // Hong Kong — Securities and Futures Commission VATP
+  ASIC   // Australia — ASIC AFS / Digital Asset Platform framework
+  CSA    // Canada — CSA Pre-Registration Undertaking + FINTRAC MSB
+  BSA    // US — FinCEN BSA Money Services Business registration
 }
 
 // ─── Auth Models (NextAuth) ───────────────────────────────────────────────────

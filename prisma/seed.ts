@@ -1,5 +1,6 @@
 import { PrismaClient, UserRole, ControlStatus, StageStatus, DocumentType, AlertType, RiskLevel, ApplicationStage } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { NEW_TRACKERS, provisionNewTracker, seedSharedTemplates } from '../src/lib/authorisation/tracker-data'
 
 const prisma = new PrismaClient()
 
@@ -963,6 +964,23 @@ async function main() {
     }
   }
 
+  // ═════ Shared templates + 8 new authorisation trackers ════════════════════
+  // Priority 10 scope (Phase 1): GFSC, MAS, VARA, FINMA, SFC, ASIC, CSA, BSA.
+  // FCA and MiCA continue to be seeded inline above. Shared templates enable
+  // one Document to serve multiple requirements across trackers.
+  const sharedTemplatesSeeded = await seedSharedTemplates(prisma, org.id)
+  console.log(`  ✓ ${sharedTemplatesSeeded} shared authorisation templates seeded`)
+
+  let newStagesTotal = 0
+  for (const tracker of NEW_TRACKERS) {
+    const stagesCreated = await provisionNewTracker(prisma, org.id, tracker.framework, { includeDemo: true })
+    newStagesTotal += stagesCreated
+    if (stagesCreated > 0) {
+      console.log(`  ✓ ${tracker.framework} tracker seeded (${stagesCreated} stages)`)
+    }
+  }
+  console.log(`  ✓ ${NEW_TRACKERS.length} new trackers provisioned (${newStagesTotal} stages total)`)
+
   // ─── Regulations ──────────────────────────────────────────────────────────
   const regulations = [
     // UK
@@ -1003,6 +1021,12 @@ async function main() {
     { id: 'reg-sec-ng', code: 'SEC_NG_VASP', name: 'Nigeria SEC Digital Assets Rules', fullName: 'Nigeria SEC Rules on Issuance, Offering and Custody of Digital Assets', jurisdiction: 'Nigeria', regulator: 'SEC Nigeria', description: 'Nigerian Securities and Exchange Commission regulatory framework for Virtual Assets Service Providers (VASPs), Digital Asset Offering Platforms, and Digital Asset Custodians. Registration, capital, and conduct requirements for crypto firms serving Nigerian customers.' },
     // South Africa
     { id: 'reg-fsca-za', code: 'FSCA_CRYPTO', name: 'South Africa FSCA Crypto-Asset Framework', fullName: 'FSCA Declaration of Crypto Assets as Financial Products (FAIS Act)', jurisdiction: 'South Africa', regulator: 'FSCA', description: 'Financial Sector Conduct Authority declaration of crypto-assets as financial products under the FAIS Act. Crypto-Asset Service Providers must be authorised as Financial Service Providers. Key obligations cover fit-and-proper requirements, AML/CFT, and customer protection.' },
+    // UAE (Dubai)
+    { id: 'reg-vara', code: 'VARA_FRAMEWORK', name: 'VARA Framework', fullName: 'UAE Virtual Assets Regulatory Authority Regulations 2023 (Dubai)', jurisdiction: 'UAE', regulator: 'VARA', description: 'Virtual Assets Regulatory Authority (Dubai) — seven activity categories covering advisory, broker-dealer, custody, exchange, lending & borrowing, management, and transfer. Comprehensive Rulebooks: Company, Compliance & Risk, Financial Crime Compliance, Market Conduct, Technology & Information, Custody Services.' },
+    // Switzerland
+    { id: 'reg-finma', code: 'FINMA_FRAMEWORK', name: 'FINMA Framework', fullName: 'Swiss Financial Market Supervisory Authority — FinIA / FinSA / AMLA', jurisdiction: 'Switzerland', regulator: 'FINMA', description: 'Swiss authorisation regime covering FinIA (financial institutions), FinSA (financial services), AMLA (anti-money laundering) and the DLT Act. FINMA licences are required for portfolio management, trading venues, custody and similar regulated activities.' },
+    // Hong Kong
+    { id: 'reg-sfc-vatp', code: 'SFC_VATP', name: 'SFC VATP Guidelines', fullName: 'Hong Kong SFC Guidelines for Virtual Asset Trading Platform Operators', jurisdiction: 'Hong Kong', regulator: 'SFC', description: 'Securities and Futures Commission VATP regime (June 2023) requiring Type 1 (Dealing in Securities) and Type 7 (Automated Trading Services) licences for centralised crypto exchanges, with detailed technology, custody, financial resources and AML obligations.' },
     // Global
     { id: 'reg-fatf-tr', code: 'FATF_TRAVEL_RULE', name: 'FATF Travel Rule', fullName: 'FATF Recommendation 16 - Virtual Assets Travel Rule', jurisdiction: 'Global', regulator: 'FATF', description: 'FATF requirement for VASPs to collect and transmit originator and beneficiary information for crypto transfers.' },
     { id: 'reg-fatf-40', code: 'FATF_40', name: 'FATF 40 Recommendations', fullName: 'FATF 40 Recommendations (Virtual Assets)', jurisdiction: 'Global', regulator: 'FATF', description: 'FATF international standards on combating money laundering and terrorist financing, including Recommendations 10, 15, and 16 specific to VASPs.' },
@@ -1065,6 +1089,11 @@ async function main() {
     // ISO
     { id: 'cme-26', regulationId: 'reg-iso27001', applicable: true, status: ControlStatus.PARTIALLY_COMPLIANT, notes: 'Applicable. ISMS aligned to ISO/IEC 27001:2022 Annex A. Formal certification targeted within 6 months of FCA authorisation.' },
     { id: 'cme-27', regulationId: 'reg-iso23635', applicable: true, status: ControlStatus.PARTIALLY_COMPLIANT, notes: 'Applicable as a DLT-based cryptoasset service provider. Governance framework mapped to ISO/TS 23635 guidelines; gap assessment in progress.' },
+    // Expanded jurisdictions
+    { id: 'cme-28', regulationId: 'reg-gfsc-dlt', applicable: true, status: ControlStatus.PARTIALLY_COMPLIANT, notes: 'Applicable — Gibraltar DLT Provider licence is part of our near-term expansion plan (Q4 2026).' },
+    { id: 'cme-29', regulationId: 'reg-vara', applicable: false, status: ControlStatus.NOT_ASSESSED, notes: 'Not currently applicable — no UAE operations. Monitoring as potential Middle East expansion route.' },
+    { id: 'cme-30', regulationId: 'reg-finma', applicable: false, status: ControlStatus.NOT_ASSESSED, notes: 'Not currently applicable — no Swiss operations.' },
+    { id: 'cme-31', regulationId: 'reg-sfc-vatp', applicable: false, status: ControlStatus.NOT_ASSESSED, notes: 'Not currently applicable — no Hong Kong operations. Monitoring as potential APAC expansion.' },
   ]
 
   // Delete and recreate compliance map entries to avoid ID conflicts across seeds
@@ -1186,6 +1215,138 @@ async function main() {
         'ctrl-005', 'ctrl-008',
         // Governance — DLT-specific board oversight
         'ctrl-011', 'ctrl-015', 'ctrl-049',
+      ],
+    },
+    // ─── Priority 10 framework-specific mappings ──────────────────────────
+    // Gibraltar DLT — 9 Regulatory Principles cover everything. Map broadly.
+    {
+      regulationId: 'reg-gfsc-dlt',
+      controlIds: [
+        'ctrl-001', 'ctrl-002', 'ctrl-005', 'ctrl-006', 'ctrl-009', 'ctrl-050', // Financial crime principle
+        'ctrl-011', 'ctrl-012', 'ctrl-013', 'ctrl-015', // Governance principle
+        'ctrl-022', 'ctrl-023', 'ctrl-024', // Client asset protection principle
+        'ctrl-027', 'ctrl-028', 'ctrl-029', 'ctrl-030', 'ctrl-032', // Systems & security principle
+        'ctrl-045', 'ctrl-046', 'ctrl-047', // Prudential standards principle
+      ],
+    },
+    // Singapore MAS PSA — expanded from 4 to broader mapping
+    {
+      regulationId: 'reg-mas-psa',
+      controlIds: [
+        // AML/CFT — MAS PSN02 territory
+        'ctrl-001', 'ctrl-002', 'ctrl-005', 'ctrl-006', 'ctrl-008', 'ctrl-009', 'ctrl-050',
+        // Governance + fit-and-proper
+        'ctrl-011', 'ctrl-012',
+        // Custody + trust account
+        'ctrl-022', 'ctrl-023',
+        // Technology (MAS TRM Guidelines)
+        'ctrl-027', 'ctrl-028', 'ctrl-029',
+        // Prudential (base capital)
+        'ctrl-045',
+      ],
+    },
+    // VARA (Dubai) — seven Rulebooks cover everything
+    {
+      regulationId: 'reg-vara',
+      controlIds: [
+        // FCC Rulebook
+        'ctrl-001', 'ctrl-002', 'ctrl-005', 'ctrl-006', 'ctrl-009', 'ctrl-050',
+        // Company Rulebook — governance
+        'ctrl-011', 'ctrl-012', 'ctrl-013', 'ctrl-015',
+        // Custody Services Rulebook
+        'ctrl-022', 'ctrl-023', 'ctrl-024', 'ctrl-026',
+        // Technology & Information Rulebook
+        'ctrl-027', 'ctrl-028', 'ctrl-029', 'ctrl-030', 'ctrl-032',
+        // Market Conduct Rulebook
+        'ctrl-018', 'ctrl-019', 'ctrl-020',
+        // Prudential
+        'ctrl-045', 'ctrl-046',
+      ],
+    },
+    // FINMA (Switzerland) — FinIA, AMLA, DLT Act
+    {
+      regulationId: 'reg-finma',
+      controlIds: [
+        // AMLA
+        'ctrl-001', 'ctrl-002', 'ctrl-005', 'ctrl-006', 'ctrl-009', 'ctrl-050',
+        // Governance (Swiss corporate governance)
+        'ctrl-011', 'ctrl-012', 'ctrl-013', 'ctrl-015',
+        // Client asset protection (DLT Act)
+        'ctrl-022', 'ctrl-023', 'ctrl-024',
+        // ICT (FINMA Circular 2023/1)
+        'ctrl-027', 'ctrl-028', 'ctrl-029', 'ctrl-032',
+        // Capital adequacy (FinIA)
+        'ctrl-045', 'ctrl-046', 'ctrl-047',
+      ],
+    },
+    // SFC VATP (Hong Kong)
+    {
+      regulationId: 'reg-sfc-vatp',
+      controlIds: [
+        // AMLO
+        'ctrl-001', 'ctrl-002', 'ctrl-005', 'ctrl-006', 'ctrl-009', 'ctrl-050',
+        // Governance + RO appointments
+        'ctrl-011', 'ctrl-012',
+        // Client money + custody
+        'ctrl-022', 'ctrl-023', 'ctrl-024', 'ctrl-025',
+        // Technology (SFC VATP Guidelines)
+        'ctrl-027', 'ctrl-028', 'ctrl-029',
+        // Market conduct
+        'ctrl-018', 'ctrl-020',
+        // Financial resources
+        'ctrl-045',
+      ],
+    },
+    // ASIC (Australia) — expanded beyond the initial list
+    {
+      regulationId: 'reg-asic',
+      controlIds: [
+        // AUSTRAC AML/CTF
+        'ctrl-001', 'ctrl-002', 'ctrl-004', 'ctrl-006', 'ctrl-050',
+        // Governance / Responsible Managers
+        'ctrl-011', 'ctrl-012', 'ctrl-013',
+        // Client money (Corps Act s.981B)
+        'ctrl-022', 'ctrl-023',
+        // Technology & cyber
+        'ctrl-027', 'ctrl-028', 'ctrl-029',
+        // Complaints + Consumer Duty-equivalent
+        'ctrl-019', 'ctrl-020',
+        // NTA / solvency
+        'ctrl-045', 'ctrl-046',
+      ],
+    },
+    // CSA (Canada) + FINTRAC
+    {
+      regulationId: 'reg-csa',
+      controlIds: [
+        // FINTRAC AML/CFT
+        'ctrl-001', 'ctrl-002', 'ctrl-004', 'ctrl-006', 'ctrl-050',
+        // Governance
+        'ctrl-011', 'ctrl-013',
+        // Custody (≥66% cold storage)
+        'ctrl-022', 'ctrl-023', 'ctrl-024',
+        // Technology
+        'ctrl-027', 'ctrl-029',
+        // Market integrity
+        'ctrl-018', 'ctrl-019',
+        // Capital
+        'ctrl-045',
+      ],
+    },
+    // Expand BSA — existing 3 controls grown to a realistic set
+    {
+      regulationId: 'reg-bsa',
+      controlIds: [
+        // AML programme (31 CFR 1022.210)
+        'ctrl-001', 'ctrl-002', 'ctrl-003', 'ctrl-004', 'ctrl-006', 'ctrl-050',
+        // CIP
+        'ctrl-001',
+        // OFAC sanctions
+        'ctrl-006',
+        // Governance — BSA Officer
+        'ctrl-011', 'ctrl-013',
+        // Systems
+        'ctrl-027', 'ctrl-028',
       ],
     },
   ]
