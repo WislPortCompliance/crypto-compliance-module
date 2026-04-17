@@ -312,16 +312,20 @@ model FCAApplicationStage {
 }
 
 model StageRequirement {
-  id          String              @id @default(cuid())
-  stageId     String
-  stage       FCAApplicationStage @relation(fields: [stageId], references: [id])
-  title       String
-  description String?             @db.Text
-  status      StageStatus         @default(NOT_STARTED)
-  notes       String?             @db.Text
-  documentId  String?
-  updatedAt   DateTime            @updatedAt
-  createdAt   DateTime            @default(now())
+  id           String              @id @default(cuid())
+  stageId      String
+  stage        FCAApplicationStage @relation(fields: [stageId], references: [id])
+  title        String
+  description  String?             @db.Text
+  status       StageStatus         @default(NOT_STARTED)
+  notes        String?             @db.Text
+  documentId   String?
+  templateId   String?
+  template     Document?           @relation("RequirementTemplate", fields: [templateId], references: [id])
+  actionItemId String?             @unique
+  actionItem   ActionItem?         @relation("RequirementAction", fields: [actionItemId], references: [id])
+  updatedAt    DateTime            @updatedAt
+  createdAt    DateTime            @default(now())
 
   @@map("stage_requirements")
 }
@@ -380,6 +384,7 @@ model Document {
   description    String?
   content        String?      @db.Text
   type           DocumentType @default(OTHER)
+  isTemplate     Boolean      @default(false)
   fileUrl        String?
   fileKey        String?
   fileSize       Int?
@@ -390,7 +395,8 @@ model Document {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  evidence ControlEvidence[]
+  evidence             ControlEvidence[]
+  requirementTemplates StageRequirement[] @relation("RequirementTemplate")
 
   @@map("documents")
 }
@@ -426,6 +432,7 @@ model ActionItem {
   organisationId String
   organisation   Organisation @relation(fields: [organisationId], references: [id])
   controlRef     String?
+  requirement    StageRequirement? @relation("RequirementAction")
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 

@@ -3,6 +3,203 @@ import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
+// ─── Template generator for FCA requirements ────────────────────────────────
+const ownerByStage: Record<string, string> = {
+  PRE_APPLICATION: 'Head of Compliance',
+  BUSINESS_PLAN: 'Chief Executive Officer',
+  FINANCIAL_RESOURCES: 'Chief Financial Officer',
+  SYSTEMS_CONTROLS: 'Chief Technology Officer',
+  AML_CTF: 'Money Laundering Reporting Officer',
+  CONSUMER_PROTECTION: 'Head of Compliance',
+  SUBMISSION: 'Head of Compliance',
+  POST_APPROVAL: 'Head of Compliance',
+}
+
+function inferDocType(title: string): DocumentType {
+  const t = title.toLowerCase()
+  if (t.includes('test') || t.includes('assessment') || t.includes('analysis') || t.includes('projections')) return DocumentType.REPORT
+  if (t.includes('procedure') || t.includes('documentation') || t.includes('submission') || t.includes('completion') || t.includes('portal')) return DocumentType.PROCEDURE
+  if (t.includes('register') || t.includes('map') || t.includes('appointment') || t.includes('insurance')) return DocumentType.EVIDENCE
+  return DocumentType.POLICY
+}
+
+function inferProcedure(title: string): string {
+  const t = title.toLowerCase()
+  if (t.includes('test') || t.includes('pen test') || t.includes('resilience')) {
+    return [
+      '1. **Scoping.** Define test objectives, environments, scenarios, and success criteria with Engineering, Security, and Business Continuity input.',
+      '2. **Execution.** Engage an FCA-acceptable independent third party. Execute per agreed methodology (e.g., CBEST for cyber, Operational Resilience self-assessment).',
+      '3. **Reporting.** Obtain structured test report with severity ratings, reproduction steps, and remediation recommendations.',
+      '4. **Remediation.** Log findings; assign owners; track to closure with evidence of fix verification.',
+      '5. **Assurance.** Retest high-severity findings independently. Report to the Risk Committee; notify FCA where material within required windows.',
+    ].join('\n')
+  }
+  if (t.includes('register') || t.includes('mapping') || t.includes('responsibility map')) {
+    return [
+      '1. **Identification.** Identify in-scope entries through cross-functional workshops and desk review.',
+      '2. **Classification.** Rate each entry using the firm\'s defined severity/materiality scale.',
+      '3. **Recording.** Capture description, owner, controls, residual rating, and review date for every entry.',
+      '4. **Review.** Review quarterly at minimum; update upon any material change.',
+      '5. **Governance.** Present summary to the Risk & Compliance Committee; escalate material items to the Board.',
+    ].join('\n')
+  }
+  if (t.includes('policy') || t.includes('framework') || t.includes('programme')) {
+    return [
+      '1. **Baseline Assessment.** Review current state against FCA expectations and industry benchmarks.',
+      '2. **Gap Analysis.** Identify gaps, prioritise by risk and regulatory impact.',
+      '3. **Design.** Document the policy/framework including controls, roles, and reporting lines.',
+      '4. **Implementation.** Roll out via training, system changes, and operational updates.',
+      '5. **Embedding.** Monitor adoption through KPIs and training completion; remediate within defined SLAs.',
+      '6. **Review.** Annual formal review by the accountable SMF; revisions approved by the Board.',
+    ].join('\n')
+  }
+  if (t.includes('submission') || t.includes('application') || t.includes('portal') || t.includes('fees')) {
+    return [
+      '1. **Content Assembly.** Gather required sections, appendices, and supporting evidence per FCA Connect guidance.',
+      '2. **Quality Review.** Internal cross-check against the FCA application checklist; legal and compliance sign-off.',
+      '3. **Pre-Submission Review.** Walk-through with external counsel and, where available, pre-application FCA case officer.',
+      '4. **Submission.** Submit via FCA Connect; retain full copy with submission timestamp.',
+      '5. **Follow-up.** Monitor FCA communications; respond to information requests within specified timelines.',
+    ].join('\n')
+  }
+  if (t.includes('training')) {
+    return [
+      '1. **Needs Analysis.** Identify target audiences and role-specific learning objectives.',
+      '2. **Content Design.** Develop modular content covering regulatory context, procedures, and scenarios.',
+      '3. **Delivery.** Combine e-learning with in-person workshops for higher-risk roles.',
+      '4. **Assessment.** Include knowledge assessments with minimum pass thresholds.',
+      '5. **Records.** Maintain completion records in the LMS; report quarterly to ExCo.',
+      '6. **Refresher.** Annual refresh for all staff; ad-hoc modules for regulatory updates.',
+    ].join('\n')
+  }
+  if (t.includes('implementation') || t.includes('integration') || t.includes('deployment') || t.includes('setup') || t.includes('configuration') || t.includes('rollout')) {
+    return [
+      '1. **Requirements.** Capture functional and regulatory requirements; document acceptance criteria.',
+      '2. **Solution Selection.** Evaluate options against requirements, regulatory fit, and total cost of ownership.',
+      '3. **Implementation.** Configure, integrate, and test per project plan; capture evidence at each milestone.',
+      '4. **User Acceptance.** UAT with business, compliance, and risk stakeholders.',
+      '5. **Go-Live.** Deploy to production with support arrangements and rollback plan.',
+      '6. **Post-Implementation Review.** Review effectiveness 90 days post-go-live; confirm controls operating as designed.',
+    ].join('\n')
+  }
+  if (t.includes('capital') || t.includes('liquidity') || t.includes('financial') || t.includes('wind-down')) {
+    return [
+      '1. **Data Collection.** Gather relevant financial data, stress scenarios, and regulatory thresholds.',
+      '2. **Calculation.** Perform calculation/modelling per FCA methodology (IFPR, wind-down planning guide).',
+      '3. **Stress Testing.** Apply adverse scenarios; document results and recovery actions.',
+      '4. **Board Challenge.** Review with the Board, noting key assumptions and sensitivities.',
+      '5. **Reporting.** Report to FCA via required returns; update on any material change.',
+      '6. **Review.** Annual review; re-run upon business model change.',
+    ].join('\n')
+  }
+  return [
+    '1. **Identify.** Determine applicable scope, stakeholders, and regulatory obligations.',
+    '2. **Assess.** Perform risk-based assessment; document findings and rationale.',
+    '3. **Execute.** Implement required controls, processes, or activities per agreed plan.',
+    '4. **Evidence.** Capture documentary evidence demonstrating effective operation.',
+    '5. **Review.** Obtain independent review and sign-off by the accountable function.',
+    '6. **Report.** Report outcomes and exceptions to the Risk & Compliance Committee.',
+  ].join('\n')
+}
+
+function generateTemplate(reqTitle: string, stage: string, stageTitle: string, seq: number) {
+  const owner = ownerByStage[stage] ?? 'Head of Compliance'
+  const type = inferDocType(reqTitle)
+  const typeLabel = type === DocumentType.POLICY ? 'policy' : type === DocumentType.PROCEDURE ? 'procedure' : type === DocumentType.REPORT ? 'report' : type === DocumentType.EVIDENCE ? 'evidence document' : 'document'
+  const ref = `TPL-${stage.replace(/_/g, '-')}-${String(seq + 1).padStart(2, '0')}`
+  const procedure = inferProcedure(reqTitle)
+
+  return {
+    name: `Template: ${reqTitle}`,
+    type,
+    content: `# ${reqTitle} — Template
+
+## Document Control
+
+| Field | Value |
+|---|---|
+| Template Reference | ${ref} |
+| FCA Stage | ${stageTitle} |
+| Document Type | ${type} |
+| Owner | ${owner} |
+| Status | Template (to be adapted before use) |
+| Version | 1.0 |
+| Classification | Internal Use |
+
+---
+
+## 1. Purpose
+
+This ${typeLabel} establishes the requirements, controls, and procedures for **${reqTitle}** as part of the **${stageTitle}** phase of the FCA Cryptoassets Regime 2026 authorisation process. It is intended to evidence that [Organisation Name] meets the relevant FCA expectations and applicable industry standards.
+
+## 2. Scope
+
+This ${typeLabel} applies to:
+
+- All employees, contractors, and secondees of [Organisation Name]
+- All business units and legal entities within the authorisation perimeter
+- All third-party providers performing activities in scope of this requirement
+- All client-facing and back-office processes associated with the above
+
+## 3. Policy Statement
+
+[Organisation Name] shall ensure that **${reqTitle.toLowerCase()}** is designed, implemented, maintained, and evidenced in a manner consistent with:
+
+- The FCA Cryptoassets Regime 2026 and associated Policy Statements
+- FSMA 2000 and secondary legislation as applicable
+- FATF Recommendations and international industry standards
+- [Organisation Name]'s internal risk appetite and governance framework
+
+## 4. Roles & Responsibilities
+
+| Role | Responsibility |
+|---|---|
+| Board of Directors | Oversight and approval; ultimate accountability for compliance |
+| Senior Management (SMF) | Approval of material changes; resource allocation |
+| ${owner} | Day-to-day ownership; implementation and evidence capture |
+| Compliance Function | Independent review; regulatory liaison |
+| Internal Audit | Periodic assurance testing |
+| Second-Line Risk | Risk assessment and monitoring |
+
+## 5. Procedure
+
+${procedure}
+
+## 6. Monitoring & Reporting
+
+[Organisation Name] shall monitor the effectiveness of this ${typeLabel} through:
+
+- Monthly operational metrics reported to the ${owner}
+- Quarterly review at the Risk and Compliance Committee
+- Annual review and re-approval by the Board
+- Ad-hoc review following material changes in regulation, business, or risk profile
+
+Key Performance Indicators:
+
+- Timeliness of evidence capture (target: 100% within 5 working days)
+- Exceptions raised and resolution time (target: <30 days for high-severity)
+- Independent audit findings (target: no material findings)
+
+## 7. Record-Keeping
+
+All records associated with this ${typeLabel} shall be retained for a minimum of **six (6) years** following the date of the relevant activity, in line with FCA SYSC requirements. Records shall be stored in [Organisation Name]'s document management system with appropriate access controls.
+
+## 8. Review & Approval
+
+| Field | Detail |
+|---|---|
+| Prepared by | [Name, Role, Date] |
+| Reviewed by | ${owner}, [Date] |
+| Approved by | [Board / Designated SMF], [Date] |
+| Next review due | [Date + 12 months] |
+
+---
+
+*This template is a starting point. [Organisation Name] should populate all bracketed placeholders, adapt the Procedure section to reflect actual operational practice, and ensure content is reviewed by Compliance and Legal before adoption.*
+`,
+  }
+}
+
 async function main() {
   console.log('🌱 Seeding database...')
 
@@ -415,15 +612,39 @@ async function main() {
     for (let i = 0; i < requirements.length; i++) {
       const reqId = `req-${stageFields.id}-${i}`
       const documentId = reqDocumentMap[reqId] ?? null
+      const templateId = `tpl-${reqId}`
+
+      // Upsert the per-requirement template Document
+      const tmpl = generateTemplate(requirements[i].title, stageFields.stage, stageFields.title, i)
+      await prisma.document.upsert({
+        where: { id: templateId },
+        update: {
+          name: tmpl.name,
+          type: tmpl.type,
+          content: tmpl.content,
+          isTemplate: true,
+        },
+        create: {
+          id: templateId,
+          name: tmpl.name,
+          description: `Starter template for FCA requirement: ${requirements[i].title}`,
+          type: tmpl.type,
+          content: tmpl.content,
+          isTemplate: true,
+          organisationId: org.id,
+        },
+      })
+
       await prisma.stageRequirement.upsert({
         where: { id: reqId },
-        update: { status: requirements[i].status, documentId },
+        update: { status: requirements[i].status, documentId, templateId },
         create: {
           id: reqId,
           stageId: stage.id,
           title: requirements[i].title,
           status: requirements[i].status,
           documentId,
+          templateId,
         },
       })
     }
