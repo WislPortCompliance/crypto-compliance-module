@@ -71,7 +71,7 @@ export function OrganisationClient({ org }: { org: any }) {
             </div>
             <InfoRow label="Regulatory Framework" value="FCA Cryptoassets Regime 2026" />
             <InfoRow label="Application Type" value="New Authorisation" />
-            <InfoRow label="Target Submission" value="Q4 2024" />
+            <InfoRow label="Target Submission" value="Q3 2026" />
           </div>
         </div>
       )}
