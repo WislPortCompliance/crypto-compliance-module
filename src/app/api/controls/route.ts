@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 
   const orgId = (session.user as any).organisationId
   const body = await req.json()
-  const { controlRef, name, description, categoryId, fcaPrincipleId, status, notes } = body
+  const { controlRef, name, description, categoryId, fcaPrincipleId, status, notes, ownerId, reminderEmail } = body
 
   if (!controlRef || !name || !description || !categoryId) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -60,6 +60,8 @@ export async function POST(req: NextRequest) {
       fcaPrincipleId: fcaPrincipleId || null,
       status: status || 'NOT_ASSESSED',
       notes: notes || null,
+      ownerId: ownerId || null,
+      reminderEmail: reminderEmail?.trim() || null,
       organisationId: orgId,
     },
   })
@@ -84,7 +86,7 @@ export async function PATCH(req: NextRequest) {
 
   const orgId = (session.user as any).organisationId
   const body = await req.json()
-  const { id, status, notes, name, description, categoryId, fcaPrincipleId, ownerId, nextReviewDate } = body
+  const { id, status, notes, name, description, categoryId, fcaPrincipleId, ownerId, reminderEmail, nextReviewDate } = body
 
   const control = await prisma.complianceControl.findFirst({ where: { id, organisationId: orgId } })
   if (!control) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -98,7 +100,8 @@ export async function PATCH(req: NextRequest) {
       ...(description && { description }),
       ...(categoryId && { categoryId }),
       ...(fcaPrincipleId !== undefined && { fcaPrincipleId: fcaPrincipleId || null }),
-      ...(ownerId !== undefined && { ownerId }),
+      ...(ownerId !== undefined && { ownerId: ownerId || null }),
+      ...(reminderEmail !== undefined && { reminderEmail: reminderEmail?.trim() || null }),
       ...(nextReviewDate !== undefined && { nextReviewDate: nextReviewDate ? new Date(nextReviewDate) : null }),
       lastReviewed: new Date(),
     },

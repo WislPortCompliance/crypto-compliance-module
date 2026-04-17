@@ -223,11 +223,27 @@ function FCAReport({ org, today, stages, appProgress }: any) {
               </div>
               <span className="text-sm font-bold text-gray-700">{done}/{total}</span>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {stage.requirements.map((r: any) => (
-                <div key={r.id} className="flex items-center gap-2 text-xs">
-                  <span className={r.status === 'COMPLETE' ? 'text-green-500' : 'text-gray-300'}>✓</span>
-                  <span className={r.status === 'COMPLETE' ? 'text-gray-400 line-through' : 'text-gray-700'}>{r.title}</span>
+                <div key={r.id} className="flex items-start gap-2 text-xs">
+                  <span className={`mt-0.5 flex-shrink-0 ${r.status === 'COMPLETE' ? 'text-green-500' : r.status === 'IN_PROGRESS' ? 'text-blue-500' : 'text-gray-300'}`}>
+                    {r.status === 'COMPLETE' ? '✓' : r.status === 'IN_PROGRESS' ? '◐' : '○'}
+                  </span>
+                  <div className="flex-1">
+                    <div className={r.status === 'COMPLETE' ? 'text-gray-400 line-through' : 'text-gray-700'}>
+                      {r.title}
+                    </div>
+                    {r.fcaReference && (
+                      <div className="text-[10px] font-mono text-gray-400 mt-0.5">{r.fcaReference}</div>
+                    )}
+                  </div>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium uppercase flex-shrink-0 ${
+                    r.status === 'COMPLETE' ? 'bg-green-50 text-green-700' :
+                    r.status === 'IN_PROGRESS' ? 'bg-blue-50 text-blue-700' :
+                    'bg-gray-50 text-gray-500'
+                  }`}>
+                    {r.status.replace(/_/g, ' ')}
+                  </span>
                 </div>
               ))}
             </div>

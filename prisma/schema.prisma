@@ -262,6 +262,7 @@ model ComplianceControl {
   fcaPrinciple   FCAPrinciple?   @relation(fields: [fcaPrincipleId], references: [id])
   ownerId        String?
   owner          User?           @relation("ControlOwner", fields: [ownerId], references: [id])
+  reminderEmail  String?
   organisationId String
   organisation   Organisation    @relation(fields: [organisationId], references: [id])
   lastReviewed   DateTime?
@@ -312,20 +313,21 @@ model FCAApplicationStage {
 }
 
 model StageRequirement {
-  id           String              @id @default(cuid())
-  stageId      String
-  stage        FCAApplicationStage @relation(fields: [stageId], references: [id])
-  title        String
-  description  String?             @db.Text
-  status       StageStatus         @default(NOT_STARTED)
-  notes        String?             @db.Text
-  documentId   String?
-  templateId   String?
-  template     Document?           @relation("RequirementTemplate", fields: [templateId], references: [id])
-  actionItemId String?             @unique
-  actionItem   ActionItem?         @relation("RequirementAction", fields: [actionItemId], references: [id])
-  updatedAt    DateTime            @updatedAt
-  createdAt    DateTime            @default(now())
+  id            String              @id @default(cuid())
+  stageId       String
+  stage         FCAApplicationStage @relation(fields: [stageId], references: [id])
+  title         String
+  description   String?             @db.Text
+  fcaReference  String?
+  status        StageStatus         @default(NOT_STARTED)
+  notes         String?             @db.Text
+  documentId    String?
+  templateId    String?
+  template      Document?           @relation("RequirementTemplate", fields: [templateId], references: [id])
+  actionItemId  String?             @unique
+  actionItem    ActionItem?         @relation("RequirementAction", fields: [actionItemId], references: [id])
+  updatedAt     DateTime            @updatedAt
+  createdAt     DateTime            @default(now())
 
   @@map("stage_requirements")
 }
@@ -411,6 +413,7 @@ model Alert {
   severity       RiskLevel    @default(MEDIUM)
   read           Boolean      @default(false)
   actionUrl      String?
+  controlRef     String?
   organisationId String
   organisation   Organisation @relation(fields: [organisationId], references: [id])
   expiresAt      DateTime?
@@ -451,6 +454,7 @@ model RiskRegister {
   mitigationPlan String?      @db.Text
   status         String       @default("OPEN")
   owner          String?
+  controlRef     String?
   reviewDate     DateTime?
   organisationId String
   organisation   Organisation @relation(fields: [organisationId], references: [id])

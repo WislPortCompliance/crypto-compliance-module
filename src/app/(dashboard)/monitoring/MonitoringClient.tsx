@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { formatDate, getRiskColor } from '@/lib/utils'
 
 const alertTypeLabel: Record<string, string> = {
@@ -20,13 +22,31 @@ const alertTypeColor: Record<string, string> = {
 }
 
 export function MonitoringClient({ alerts, actions, risks }: { alerts: any[]; actions: any[]; risks: any[] }) {
+  const searchParams = useSearchParams()
   const [tab, setTab] = useState<'alerts' | 'actions' | 'risks'>('alerts')
   const [localAlerts, setLocalAlerts] = useState(alerts)
   const [localActions, setLocalActions] = useState(actions)
+  const [filterOverdue, setFilterOverdue] = useState(false)
+
+  // Respond to URL params (drill-in from dashboard)
+  useEffect(() => {
+    const filter = searchParams?.get('filter')
+    const tabParam = searchParams?.get('tab')
+    if (filter === 'overdue') {
+      setFilterOverdue(true)
+      setTab('actions')
+    }
+    if (tabParam === 'alerts' || tabParam === 'actions' || tabParam === 'risks') setTab(tabParam)
+  }, [searchParams])
 
   const unreadAlerts = localAlerts.filter(a => !a.read).length
   const openActions = localActions.filter(a => a.status !== 'COMPLETE').length
   const criticalRisks = risks.filter(r => r.riskLevel === 'CRITICAL' || r.riskLevel === 'HIGH').length
+
+  const now = new Date()
+  const visibleActions = filterOverdue
+    ? localActions.filter(a => a.dueDate && new Date(a.dueDate) < now && a.status !== 'COMPLETE')
+    : localActions
 
   async function markRead(id: string) {
     await fetch('/api/alerts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
@@ -37,8 +57,6 @@ export function MonitoringClient({ alerts, actions, risks }: { alerts: any[]; ac
     await fetch('/api/actions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status }) })
     setLocalActions(prev => prev.map(a => a.id === id ? { ...a, status } : a))
   }
-
-  const now = new Date()
 
   return (
     <div className="p-6 space-y-6">
@@ -94,6 +112,14 @@ export function MonitoringClient({ alerts, actions, risks }: { alerts: any[]; ac
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getRiskColor(alert.severity)}`}>
                         {alert.severity}
                       </span>
+                      {alert.controlRef && (
+                        <Link
+                          href={`/controls?controlRef=${alert.controlRef}`}
+                          className="text-xs font-mono px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors"
+                        >
+                          {alert.controlRef} →
+                        </Link>
+                      )}
                     </div>
                     <h3 className="text-sm font-semibold text-gray-900">{alert.title}</h3>
                     <p className="text-sm text-gray-600 mt-1 leading-relaxed">{alert.message}</p>
@@ -113,29 +139,46 @@ export function MonitoringClient({ alerts, actions, risks }: { alerts: any[]; ac
 
       {/* Actions Tab */}
       {tab === 'actions' && (
-        <div className="card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100">
-                <th className="text-left px-5 py-3 table-header">Action</th>
-                <th className="text-left px-5 py-3 table-header">Control</th>
-                <th className="text-left px-5 py-3 table-header">Owner</th>
-                <th className="text-left px-5 py-3 table-header">Due Date</th>
-                <th className="text-left px-5 py-3 table-header">Priority</th>
-                <th className="text-left px-5 py-3 table-header">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {localActions.map(action => {
-                const isOverdue = action.dueDate && new Date(action.dueDate) < now && action.status !== 'COMPLETE'
-                return (
-                  <tr key={action.id} className={isOverdue ? 'bg-red-50/30' : ''}>
-                    <td className="px-5 py-3">
-                      <div className="font-medium text-gray-900">{action.title}</div>
-                      <div className="text-xs text-gray-400 mt-0.5 line-clamp-1">{action.description}</div>
-                    </td>
-                    <td className="px-5 py-3 font-mono text-xs text-gray-500">{action.controlRef ?? '—'}</td>
-                    <td className="px-5 py-3 text-xs text-gray-600">{action.owner?.name ?? '—'}</td>
+        <>
+          {filterOverdue && (
+            <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-lg px-4 py-2.5 text-sm mb-4">
+              <div className="text-red-800 font-medium">
+                Showing overdue actions only ({visibleActions.length})
+              </div>
+              <button onClick={() => setFilterOverdue(false)} className="text-xs text-red-700 hover:text-red-900 font-semibold">
+                Show all actions
+              </button>
+            </div>
+          )}
+          <div className="card overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="text-left px-5 py-3 table-header">Action</th>
+                  <th className="text-left px-5 py-3 table-header">Control</th>
+                  <th className="text-left px-5 py-3 table-header">Owner</th>
+                  <th className="text-left px-5 py-3 table-header">Due Date</th>
+                  <th className="text-left px-5 py-3 table-header">Priority</th>
+                  <th className="text-left px-5 py-3 table-header">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {visibleActions.map(action => {
+                  const isOverdue = action.dueDate && new Date(action.dueDate) < now && action.status !== 'COMPLETE'
+                  return (
+                    <tr key={action.id} className={isOverdue ? 'bg-red-50/30' : ''}>
+                      <td className="px-5 py-3">
+                        <div className="font-medium text-gray-900">{action.title}</div>
+                        <div className="text-xs text-gray-400 mt-0.5 line-clamp-1">{action.description}</div>
+                      </td>
+                      <td className="px-5 py-3 font-mono text-xs">
+                        {action.controlRef ? (
+                          <Link href={`/controls?controlRef=${action.controlRef}`} className="text-blue-600 hover:text-blue-800 hover:underline">
+                            {action.controlRef}
+                          </Link>
+                        ) : <span className="text-gray-400">—</span>}
+                      </td>
+                      <td className="px-5 py-3 text-xs text-gray-600">{action.owner?.name ?? '—'}</td>
                     <td className="px-5 py-3">
                       <span className={`text-xs font-medium ${isOverdue ? 'text-red-600' : 'text-gray-600'}`}>
                         {isOverdue && '⚠️ '}{formatDate(action.dueDate)}
@@ -163,6 +206,7 @@ export function MonitoringClient({ alerts, actions, risks }: { alerts: any[]; ac
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {/* Risks Tab */}
@@ -178,6 +222,14 @@ export function MonitoringClient({ alerts, actions, risks }: { alerts: any[]; ac
                     </span>
                     {risk.category && <span className="text-xs text-gray-400">{risk.category}</span>}
                     <span className="text-xs font-bold text-gray-700 ml-2">Score: {risk.riskScore}</span>
+                    {risk.controlRef && (
+                      <Link
+                        href={`/controls?controlRef=${risk.controlRef}`}
+                        className="text-xs font-mono px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors ml-1"
+                      >
+                        {risk.controlRef} →
+                      </Link>
+                    )}
                   </div>
                   <h3 className="text-sm font-semibold text-gray-900">{risk.title}</h3>
                   <p className="text-xs text-gray-500 mt-1 leading-relaxed">{risk.description}</p>

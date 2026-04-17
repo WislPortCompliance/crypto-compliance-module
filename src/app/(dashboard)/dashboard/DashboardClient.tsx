@@ -103,27 +103,37 @@ export function DashboardClient({
           <div className="flex items-center gap-6">
             <ScoreGauge score={score} />
             <div className="flex-1">
-              <div className="text-sm font-semibold text-gray-700 mb-3">Control Breakdown</div>
+              <div className="text-sm font-semibold text-gray-700 mb-3">Control Breakdown <span className="text-xs font-normal text-gray-400">(click a row to drill in)</span></div>
               <div className="space-y-2.5">
                 {[
-                  { label: 'Compliant', count: compliantControls, color: 'bg-green-500', total: totalControls },
-                  { label: 'Partial', count: partialControls, color: 'bg-amber-500', total: totalControls },
-                  { label: 'Non-Compliant', count: nonCompliantControls, color: 'bg-red-500', total: totalControls },
-                  { label: 'Not Assessed', count: notAssessedControls, color: 'bg-gray-400', total: totalControls },
-                ].map(item => (
-                  <div key={item.label}>
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${item.color}`}></span>
-                        <span className="text-gray-600">{item.label}</span>
+                  { label: 'Compliant', count: compliantControls, color: 'bg-green-500', total: totalControls, filter: 'COMPLIANT' },
+                  { label: 'Partial', count: partialControls, color: 'bg-amber-500', total: totalControls, filter: 'PARTIALLY_COMPLIANT' },
+                  { label: 'Non-Compliant', count: nonCompliantControls, color: 'bg-red-500', total: totalControls, filter: 'NON_COMPLIANT' },
+                  { label: 'Not Assessed', count: notAssessedControls, color: 'bg-gray-400', total: totalControls, filter: 'NOT_ASSESSED' },
+                ].map(item => {
+                  const pct = item.total > 0 ? Math.round((item.count / item.total) * 100) : 0
+                  return (
+                    <Link
+                      key={item.label}
+                      href={`/controls?filterStatus=${item.filter}`}
+                      className="block group -mx-2 px-2 py-1 rounded hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${item.color}`}></span>
+                          <span className="text-gray-600 group-hover:text-gray-900">{item.label}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500 tabular-nums">{pct}%</span>
+                          <span className="text-xs font-semibold text-gray-900 tabular-nums w-6 text-right">{item.count}</span>
+                        </div>
                       </div>
-                      <span className="text-xs font-semibold text-gray-900">{item.count}</span>
-                    </div>
-                    <div className="w-full bg-gray-100 rounded-full h-1.5">
-                      <div className={`h-1.5 rounded-full ${item.color}`} style={{ width: `${item.total > 0 ? Math.round((item.count / item.total) * 100) : 0}%` }} />
-                    </div>
-                  </div>
-                ))}
+                      <div className="w-full bg-gray-100 rounded-full h-1.5">
+                        <div className={`h-1.5 rounded-full ${item.color}`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </Link>
+                  )
+                })}
               </div>
             </div>
           </div>
@@ -131,10 +141,10 @@ export function DashboardClient({
 
         {/* Metric Cards — col-span-2 */}
         <div className="lg:col-span-2 grid grid-cols-2 gap-4">
-          <MetricCard label="Total Controls" value={totalControls} sub="across all categories" color="blue" icon="shield" />
-          <MetricCard label="Compliant" value={`${Math.round((compliantControls / Math.max(totalControls, 1)) * 100)}%`} sub={`${compliantControls} of ${totalControls}`} color="green" icon="check" />
-          <MetricCard label="Overdue Actions" value={overdueActions} sub="require immediate attention" color={overdueActions > 0 ? 'red' : 'green'} icon="warning" />
-          <MetricCard label="Reviews Due (30d)" value={upcomingReviews} sub="controls need review" color={upcomingReviews > 5 ? 'amber' : 'gray'} icon="calendar" />
+          <MetricCard label="Total Controls" value={totalControls} sub="across all categories" color="blue" icon="shield" href="/controls" />
+          <MetricCard label="Compliant" value={`${Math.round((compliantControls / Math.max(totalControls, 1)) * 100)}%`} sub={`${compliantControls} of ${totalControls}`} color="green" icon="check" href="/controls?filterStatus=COMPLIANT" />
+          <MetricCard label="Overdue Actions" value={overdueActions} sub="require immediate attention" color={overdueActions > 0 ? 'red' : 'green'} icon="warning" href="/monitoring?filter=overdue" />
+          <MetricCard label="Reviews Due (30d)" value={upcomingReviews} sub="controls need review" color={upcomingReviews > 5 ? 'amber' : 'gray'} icon="calendar" href="/controls?filter=reviewsDue" />
         </div>
       </div>
 
@@ -272,7 +282,7 @@ export function DashboardClient({
   )
 }
 
-function MetricCard({ label, value, sub, color, icon }: { label: string; value: string | number; sub: string; color: string; icon: string }) {
+function MetricCard({ label, value, sub, color, icon, href }: { label: string; value: string | number; sub: string; color: string; icon: string; href?: string }) {
   const colors: Record<string, string> = {
     blue: 'bg-blue-50 text-blue-600',
     green: 'bg-green-50 text-green-600',
@@ -280,16 +290,27 @@ function MetricCard({ label, value, sub, color, icon }: { label: string; value: 
     amber: 'bg-amber-50 text-amber-600',
     gray: 'bg-gray-50 text-gray-600',
   }
-  return (
-    <div className="card p-5">
+  const inner = (
+    <>
       <div className={`inline-flex w-9 h-9 items-center justify-center rounded-lg mb-3 ${colors[color] ?? colors.gray}`}>
         <MetricIcon name={icon} />
       </div>
       <div className="text-2xl font-bold text-gray-900">{value}</div>
       <div className="text-sm font-medium text-gray-700 mt-0.5">{label}</div>
       <div className="text-xs text-gray-400 mt-0.5">{sub}</div>
-    </div>
+    </>
   )
+  if (href) {
+    return (
+      <Link href={href} className="card p-5 block hover:shadow-md hover:border-blue-200 transition-all group">
+        {inner}
+        <div className="text-[10px] text-blue-500 font-semibold mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          View →
+        </div>
+      </Link>
+    )
+  }
+  return <div className="card p-5">{inner}</div>
 }
 
 function MetricIcon({ name }: { name: string }) {

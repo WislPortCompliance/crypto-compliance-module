@@ -601,6 +601,63 @@ async function main() {
     'req-stage-5-6': 'doc-001',   // SAR procedures → AML Policy
   }
 
+  // FCA / regulatory references per requirement — surfaced in the FCA Tracker and
+  // the FCA Readiness Report so compliance teams and FCA case officers can cite
+  // the precise rule each checklist item evidences.
+  const reqFcaReferences: Record<string, string> = {
+    // Stage 1 — Pre-Application
+    'req-stage-1-0': 'FSMA 2000 s.19 · PERG 1',
+    'req-stage-1-1': 'FCA PERG 2.2',
+    'req-stage-1-2': 'FCA SYSC 3.1',
+    'req-stage-1-3': 'FCA SUP 8; Handbook Notice 109',
+    'req-stage-1-4': 'FCA SYSC 4.1',
+    // Stage 2 — Business Plan & Governance
+    'req-stage-2-0': 'FCA COND 2.4 (Appropriate Resources)',
+    'req-stage-2-1': 'FCA SYSC 4.1; SYSC 5.1',
+    'req-stage-2-2': 'SM&CR · FIT 2; SUP 10C',
+    'req-stage-2-3': 'FCA SYSC 25.2',
+    'req-stage-2-4': 'FCA SYSC 25.5',
+    'req-stage-2-5': 'FCA SYSC 10',
+    // Stage 3 — Financial Resources
+    'req-stage-3-0': 'FCA MIFIDPRU 4; IFPR',
+    'req-stage-3-1': 'FCA COND 2.4; SYSC 4.1.1',
+    'req-stage-3-2': 'FCA MIFIDPRU 6; SYSC 9',
+    'req-stage-3-3': 'FCA WDPG; SYSC 4.1.11',
+    'req-stage-3-4': 'FCA MIPRU 3; IPRU-INV 13',
+    // Stage 4 — Systems & Controls
+    'req-stage-4-0': 'FCA SYSC 6.1',
+    'req-stage-4-1': 'FCA SYSC 6.3; MLR 2017 reg.28',
+    'req-stage-4-2': 'FCA MAR 1; SYSC 6.2',
+    'req-stage-4-3': 'FCA SUP 16 (Regulatory Returns)',
+    'req-stage-4-4': 'FCA SYSC 15A; PS21/3',
+    'req-stage-4-5': 'FCA SYSC 13; PS22/3 (Cyber)',
+    // Stage 5 — AML/CTF
+    'req-stage-5-0': 'MLR 2017 reg.19; SYSC 6.3',
+    'req-stage-5-1': 'MLR 2017 reg.28',
+    'req-stage-5-2': 'MLR 2017 reg.64A; FATF Rec.16',
+    'req-stage-5-3': 'MLR 2017 reg.18; JMLSG Part III',
+    'req-stage-5-4': 'MLR 2017 reg.21; SYSC 6.3.9',
+    'req-stage-5-5': 'MLR 2017 reg.24; SYSC 6.3.7',
+    'req-stage-5-6': 'POCA 2002 s.330; MLR 2017 reg.33',
+    // Stage 6 — Consumer Protection
+    'req-stage-6-0': 'FCA PRIN 2A; PS22/9',
+    'req-stage-6-1': 'FCA COBS 4.12B; FG19/1',
+    'req-stage-6-2': 'FCA COBS 3.5; COBS 3.7',
+    'req-stage-6-3': 'FCA COBS 10A; PS22/9',
+    'req-stage-6-4': 'FCA DISP 1',
+    // Stage 7 — Submission
+    'req-stage-7-0': 'FCA Connect; SUP 6.3',
+    'req-stage-7-1': 'FCA SUP 6.3.4',
+    'req-stage-7-2': 'FCA FEES 3 Annex 1',
+    'req-stage-7-3': 'FCA SUP 6.2',
+    'req-stage-7-4': 'FCA SUP 6.3.15',
+    // Stage 8 — Post-Approval
+    'req-stage-8-0': 'FCA SYSC 6.1; PS21/3',
+    'req-stage-8-1': 'FCA SUP 16',
+    'req-stage-8-2': 'FCA SUP 11.3',
+    'req-stage-8-3': 'FCA SYSC 3.2',
+  }
+
   for (const stageData of stages) {
     const { requirements, ...stageFields } = stageData
     const stage = await prisma.fCAApplicationStage.upsert({
@@ -635,9 +692,11 @@ async function main() {
         },
       })
 
+      const fcaReference = reqFcaReferences[reqId] ?? null
+
       await prisma.stageRequirement.upsert({
         where: { id: reqId },
-        update: { status: requirements[i].status, documentId, templateId },
+        update: { status: requirements[i].status, documentId, templateId, fcaReference },
         create: {
           id: reqId,
           stageId: stage.id,
@@ -645,6 +704,7 @@ async function main() {
           status: requirements[i].status,
           documentId,
           templateId,
+          fcaReference,
         },
       })
     }
@@ -1715,13 +1775,13 @@ To evidence Consumer Duty compliance, the Firm will establish:
 
   // ─── Alerts ───────────────────────────────────────────────────────────────
   const alerts = [
-    { id: 'alert-001', type: AlertType.REGULATORY_CHANGE, title: 'FCA Crypto 2026 Final Rules Published', message: 'FCA has published final rules for the UK cryptoasset regime. Full implementation required by Q1 2026. Review your controls against PS24/1.', severity: RiskLevel.HIGH },
-    { id: 'alert-002', type: AlertType.REGULATORY_CHANGE, title: 'FATF Travel Rule Update — UK Implementation', message: 'Updated UK Travel Rule guidance published. VASP-to-VASP transfers above £1,000 threshold effective from October 2025.', severity: RiskLevel.HIGH },
-    { id: 'alert-003', type: AlertType.OVERDUE_ACTION, title: 'Travel Rule Compliance Overdue', message: 'Control AML-005 (Travel Rule Compliance) was due for remediation in Q1 2024. Current status: Non-Compliant. Immediate action required.', severity: RiskLevel.CRITICAL },
-    { id: 'alert-004', type: AlertType.UPCOMING_REVIEW, title: 'Transaction Monitoring System Review Due', message: 'Quarterly review of transaction monitoring system due in 14 days. Ensure rule parameters are updated for new coin types.', severity: RiskLevel.MEDIUM },
-    { id: 'alert-005', type: AlertType.REGULATORY_CHANGE, title: 'MiCA Passporting Requirements', message: 'EU MiCA passporting provisions now in effect. If you serve EU customers, review your CASP authorisation requirements.', severity: RiskLevel.MEDIUM },
-    { id: 'alert-006', type: AlertType.UPCOMING_REVIEW, title: 'SM&CR Certification Window Opening', message: 'Annual SM&CR certification window opens in 30 days. Ensure all Certified Persons are assessed and records updated.', severity: RiskLevel.MEDIUM },
-    { id: 'alert-007', type: AlertType.OVERDUE_ACTION, title: 'Proliferation Finance Risk Assessment Outstanding', message: 'Control FC-002 (Proliferation Finance Controls) has not been assessed. FATF updated guidance requires dedicated PF risk assessment.', severity: RiskLevel.HIGH },
+    { id: 'alert-001', type: AlertType.REGULATORY_CHANGE, title: 'FCA Crypto 2026 Final Rules Published', message: 'FCA has published final rules for the UK cryptoasset regime. Full implementation required by Q1 2026. Review your controls against PS24/1.', severity: RiskLevel.HIGH, controlRef: null },
+    { id: 'alert-002', type: AlertType.REGULATORY_CHANGE, title: 'FATF Travel Rule Update — UK Implementation', message: 'Updated UK Travel Rule guidance published. VASP-to-VASP transfers above £1,000 threshold effective from October 2025.', severity: RiskLevel.HIGH, controlRef: 'AML-005' },
+    { id: 'alert-003', type: AlertType.OVERDUE_ACTION, title: 'Travel Rule Compliance Overdue', message: 'Control AML-005 (Travel Rule Compliance) was due for remediation in Q1 2024. Current status: Non-Compliant. Immediate action required.', severity: RiskLevel.CRITICAL, controlRef: 'AML-005' },
+    { id: 'alert-004', type: AlertType.UPCOMING_REVIEW, title: 'Transaction Monitoring System Review Due', message: 'Quarterly review of transaction monitoring system due in 14 days. Ensure rule parameters are updated for new coin types.', severity: RiskLevel.MEDIUM, controlRef: 'AML-008' },
+    { id: 'alert-005', type: AlertType.REGULATORY_CHANGE, title: 'MiCA Passporting Requirements', message: 'EU MiCA passporting provisions now in effect. If you serve EU customers, review your CASP authorisation requirements.', severity: RiskLevel.MEDIUM, controlRef: null },
+    { id: 'alert-006', type: AlertType.UPCOMING_REVIEW, title: 'SM&CR Certification Window Opening', message: 'Annual SM&CR certification window opens in 30 days. Ensure all Certified Persons are assessed and records updated.', severity: RiskLevel.MEDIUM, controlRef: 'GOV-002' },
+    { id: 'alert-007', type: AlertType.OVERDUE_ACTION, title: 'Proliferation Finance Risk Assessment Outstanding', message: 'Control FC-002 (Proliferation Finance Controls) has not been assessed. FATF updated guidance requires dedicated PF risk assessment.', severity: RiskLevel.HIGH, controlRef: 'FC-002' },
   ]
 
   for (const alert of alerts) {
@@ -1754,12 +1814,12 @@ To evidence Consumer Duty compliance, the Firm will establish:
 
   // ─── Risk Register ────────────────────────────────────────────────────────
   const risks = [
-    { id: 'risk-001', title: 'Travel Rule Non-Compliance', description: 'Failure to implement Travel Rule by FCA deadline could result in regulatory enforcement action and reputational damage.', category: 'Regulatory', likelihood: 3, impact: 5, riskScore: 15, riskLevel: RiskLevel.CRITICAL, mitigationPlan: 'Travel Rule solution being evaluated. Target implementation Q3 2026.', status: 'OPEN', owner: 'Sarah Chen' },
-    { id: 'risk-002', title: 'Cyber Attack on Hot Wallet', description: 'Sophisticated cyber attack targeting hot wallet infrastructure could result in loss of client cryptoassets.', category: 'Technology', likelihood: 2, impact: 5, riskScore: 10, riskLevel: RiskLevel.HIGH, mitigationPlan: 'Multi-sig, MFA, and 95% cold storage policy in place. Annual pen testing programme.', status: 'OPEN', owner: 'Alex Thompson' },
-    { id: 'risk-003', title: 'Regulatory Enforcement Action', description: 'FCA enforcement action arising from AML/CTF deficiencies identified during supervisory visit.', category: 'Regulatory', likelihood: 2, impact: 4, riskScore: 8, riskLevel: RiskLevel.HIGH, mitigationPlan: 'Enhanced AML programme implemented. MLRO appointed. Ongoing compliance monitoring.', status: 'OPEN', owner: 'Sarah Chen' },
-    { id: 'risk-004', title: 'Key Person Dependency - MLRO', description: 'Over-reliance on single MLRO with limited deputy coverage creating operational risk.', category: 'Operational', likelihood: 3, impact: 3, riskScore: 9, riskLevel: RiskLevel.MEDIUM, mitigationPlan: 'Deputy MLRO appointment in progress. Knowledge transfer documentation underway.', status: 'IN_PROGRESS', owner: 'James Okafor' },
-    { id: 'risk-005', title: 'Stablecoin De-peg Scenario', description: 'Major stablecoin de-peg event creating liquidity crisis and potential client asset shortfall.', category: 'Market', likelihood: 2, impact: 4, riskScore: 8, riskLevel: RiskLevel.HIGH, mitigationPlan: 'Stablecoin concentration limits implemented. Liquidity buffer maintained in fiat.', status: 'OPEN', owner: 'James Okafor' },
-    { id: 'risk-006', title: 'Smart Contract Exploit', description: 'Vulnerability in integrated DeFi smart contracts leading to loss of funds or client data compromise.', category: 'Technology', likelihood: 2, impact: 4, riskScore: 8, riskLevel: RiskLevel.HIGH, mitigationPlan: 'Smart contract audit programme being established. DeFi integration limits in place.', status: 'OPEN', owner: 'Alex Thompson' },
+    { id: 'risk-001', title: 'Travel Rule Non-Compliance', description: 'Failure to implement Travel Rule by FCA deadline could result in regulatory enforcement action and reputational damage.', category: 'Regulatory', likelihood: 3, impact: 5, riskScore: 15, riskLevel: RiskLevel.CRITICAL, mitigationPlan: 'Travel Rule solution being evaluated. Target implementation Q3 2026.', status: 'OPEN', owner: 'Sarah Chen', controlRef: 'AML-005' },
+    { id: 'risk-002', title: 'Cyber Attack on Hot Wallet', description: 'Sophisticated cyber attack targeting hot wallet infrastructure could result in loss of client cryptoassets.', category: 'Technology', likelihood: 2, impact: 5, riskScore: 10, riskLevel: RiskLevel.HIGH, mitigationPlan: 'Multi-sig, MFA, and 95% cold storage policy in place. Annual pen testing programme.', status: 'OPEN', owner: 'Alex Thompson', controlRef: 'TECH-003' },
+    { id: 'risk-003', title: 'Regulatory Enforcement Action', description: 'FCA enforcement action arising from AML/CTF deficiencies identified during supervisory visit.', category: 'Regulatory', likelihood: 2, impact: 4, riskScore: 8, riskLevel: RiskLevel.HIGH, mitigationPlan: 'Enhanced AML programme implemented. MLRO appointed. Ongoing compliance monitoring.', status: 'OPEN', owner: 'Sarah Chen', controlRef: 'AML-005' },
+    { id: 'risk-004', title: 'Key Person Dependency - MLRO', description: 'Over-reliance on single MLRO with limited deputy coverage creating operational risk.', category: 'Operational', likelihood: 3, impact: 3, riskScore: 9, riskLevel: RiskLevel.MEDIUM, mitigationPlan: 'Deputy MLRO appointment in progress. Knowledge transfer documentation underway.', status: 'IN_PROGRESS', owner: 'James Okafor', controlRef: 'GOV-002' },
+    { id: 'risk-005', title: 'Stablecoin De-peg Scenario', description: 'Major stablecoin de-peg event creating liquidity crisis and potential client asset shortfall.', category: 'Market', likelihood: 2, impact: 4, riskScore: 8, riskLevel: RiskLevel.HIGH, mitigationPlan: 'Stablecoin concentration limits implemented. Liquidity buffer maintained in fiat.', status: 'OPEN', owner: 'James Okafor', controlRef: 'CUST-004' },
+    { id: 'risk-006', title: 'Smart Contract Exploit', description: 'Vulnerability in integrated DeFi smart contracts leading to loss of funds or client data compromise.', category: 'Technology', likelihood: 2, impact: 4, riskScore: 8, riskLevel: RiskLevel.HIGH, mitigationPlan: 'Smart contract audit programme being established. DeFi integration limits in place.', status: 'OPEN', owner: 'Alex Thompson', controlRef: 'TECH-003' },
   ]
 
   for (const risk of risks) {

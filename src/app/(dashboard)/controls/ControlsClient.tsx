@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { formatDate, getStatusColor, getStatusLabel } from '@/lib/utils'
 
 const STATUS_OPTIONS = ['COMPLIANT', 'PARTIALLY_COMPLIANT', 'NON_COMPLIANT', 'NOT_ASSESSED']
@@ -34,16 +35,32 @@ interface ControlForm {
   fcaPrincipleId: string
   status: string
   notes: string
+  ownerId: string
+  reminderEmail: string
 }
 
 const BLANK_FORM: ControlForm = {
   controlRef: '', name: '', description: '', categoryId: '', fcaPrincipleId: '', status: 'NOT_ASSESSED', notes: '',
+  ownerId: '', reminderEmail: '',
 }
 
-export function ControlsClient({ controls, categories, principles, regulations }: { controls: any[]; categories: any[]; principles: any[]; regulations: any[] }) {
+export function ControlsClient({ controls, categories, principles, regulations, users = [] }: { controls: any[]; categories: any[]; principles: any[]; regulations: any[]; users?: any[] }) {
+  const searchParams = useSearchParams()
   const [search, setSearch] = useState('')
   const [filterCat, setFilterCat] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [filterOther, setFilterOther] = useState<'' | 'reviewsDue' | 'controlRef'>('')
+  const [filterControlRef, setFilterControlRef] = useState('')
+
+  // ─── Apply URL query params on mount (drill-in from dashboard/monitoring) ─
+  useEffect(() => {
+    const status = searchParams?.get('filterStatus')
+    const filter = searchParams?.get('filter')
+    const controlRef = searchParams?.get('controlRef')
+    if (status) setFilterStatus(status)
+    if (filter === 'reviewsDue') setFilterOther('reviewsDue')
+    if (controlRef) { setFilterControlRef(controlRef); setFilterOther('controlRef'); setSearch(controlRef) }
+  }, [searchParams])
   const [selected, setSelected] = useState<any | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [localControls, setLocalControls] = useState(controls)
@@ -78,15 +95,25 @@ export function ControlsClient({ controls, categories, principles, regulations }
   const [orgDocs, setOrgDocs] = useState<any[]>([])
   const [loadingDocs, setLoadingDocs] = useState(false)
 
-  const filtered = useMemo(() => localControls.filter(c => {
-    if (filterCat && c.categoryId !== filterCat) return false
-    if (filterStatus && c.status !== filterStatus) return false
-    if (search) {
-      const q = search.toLowerCase()
-      return c.name.toLowerCase().includes(q) || c.controlRef.toLowerCase().includes(q) || c.description.toLowerCase().includes(q)
-    }
-    return true
-  }), [localControls, filterCat, filterStatus, search])
+  const filtered = useMemo(() => {
+    const now = new Date()
+    const in30 = new Date(now.getTime() + 30 * 86400000)
+    return localControls.filter(c => {
+      if (filterCat && c.categoryId !== filterCat) return false
+      if (filterStatus && c.status !== filterStatus) return false
+      if (filterOther === 'reviewsDue') {
+        if (!c.nextReviewDate) return false
+        const d = new Date(c.nextReviewDate)
+        if (d > in30) return false
+      }
+      if (filterOther === 'controlRef' && filterControlRef && c.controlRef !== filterControlRef) return false
+      if (search) {
+        const q = search.toLowerCase()
+        return c.name.toLowerCase().includes(q) || c.controlRef.toLowerCase().includes(q) || c.description.toLowerCase().includes(q)
+      }
+      return true
+    })
+  }, [localControls, filterCat, filterStatus, filterOther, filterControlRef, search])
 
   const byCategory = useMemo(() => {
     const map: Record<string, { category: any; controls: any[] }> = {}
@@ -135,7 +162,7 @@ export function ControlsClient({ controls, categories, principles, regulations }
           ...ctrl,
           category: categories.find(c => c.id === ctrl.categoryId),
           fcaPrinciple: principles.find(p => p.id === ctrl.fcaPrincipleId) ?? null,
-          owner: null,
+          owner: users.find((u: any) => u.id === ctrl.ownerId) ?? null,
           evidence: [],
           regulationMappings: [],
         }
@@ -157,6 +184,8 @@ export function ControlsClient({ controls, categories, principles, regulations }
       fcaPrincipleId: ctrl.fcaPrincipleId ?? '',
       status: ctrl.status,
       notes: ctrl.notes ?? '',
+      ownerId: ctrl.ownerId ?? '',
+      reminderEmail: ctrl.reminderEmail ?? '',
     })
     setShowEdit(true)
   }
@@ -176,6 +205,7 @@ export function ControlsClient({ controls, categories, principles, regulations }
         ...editForm,
         category: categories.find(c => c.id === editForm.categoryId) ?? selected.category,
         fcaPrinciple: principles.find(p => p.id === editForm.fcaPrincipleId) ?? null,
+        owner: editForm.ownerId ? (users.find((u: any) => u.id === editForm.ownerId) ?? null) : null,
         lastReviewed: new Date().toISOString(),
       }
       setLocalControls(prev => prev.map(c => c.id === selected.id ? updatedCtrl : c))
@@ -356,6 +386,23 @@ export function ControlsClient({ controls, categories, principles, regulations }
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {(filterOther === 'reviewsDue' || (filterOther === 'controlRef' && filterControlRef)) && (
+            <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 text-sm">
+              <div className="flex items-center gap-2 text-blue-800">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                <span className="font-medium">
+                  {filterOther === 'reviewsDue' && 'Showing controls with a review due within 30 days'}
+                  {filterOther === 'controlRef' && `Showing control: ${filterControlRef}`}
+                </span>
+              </div>
+              <button
+                onClick={() => { setFilterOther(''); setFilterControlRef(''); if (filterOther === 'controlRef') setSearch('') }}
+                className="text-xs text-blue-700 hover:text-blue-900 font-semibold"
+              >
+                Clear filter
+              </button>
+            </div>
+          )}
           {byCategory.map(({ category, controls: catControls }) => (
             <div key={category?.id ?? 'unknown'}>
               <div className="flex items-center gap-3 mb-3">
@@ -432,6 +479,12 @@ export function ControlsClient({ controls, categories, principles, regulations }
             <DetailRow label="Category" value={selected.category?.name} />
             <DetailRow label="FCA Principle" value={selected.fcaPrinciple ? `Principle ${selected.fcaPrinciple.number}: ${selected.fcaPrinciple.name}` : '—'} />
             <DetailRow label="Owner" value={selected.owner?.name ?? '—'} />
+            {selected.reminderEmail && (
+              <div>
+                <div className="text-xs font-semibold text-gray-500 uppercase mb-0.5">Reminder Email</div>
+                <div className="text-sm text-gray-800 break-all">{selected.reminderEmail}</div>
+              </div>
+            )}
             <DetailRow label="Last Reviewed" value={formatDate(selected.lastReviewed)} />
             <DetailRow label="Next Review" value={formatDate(selected.nextReviewDate)} />
             <div>
@@ -570,6 +623,34 @@ export function ControlsClient({ controls, categories, principles, regulations }
                   </select>
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
+                  <select
+                    value={addForm.ownerId}
+                    onChange={e => {
+                      const uid = e.target.value
+                      const user = users.find((u: any) => u.id === uid)
+                      setAddForm(f => ({ ...f, ownerId: uid, reminderEmail: f.reminderEmail || user?.email || '' }))
+                    }}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  >
+                    <option value="">— Unassigned —</option>
+                    {users.map((u: any) => <option key={u.id} value={u.id}>{u.name} ({u.role?.replace(/_/g, ' ').toLowerCase()})</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Reminder Email</label>
+                  <input
+                    type="email"
+                    placeholder="e.g. compliance@firm.com"
+                    value={addForm.reminderEmail}
+                    onChange={e => setAddForm(f => ({ ...f, reminderEmail: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-0.5">Auto-fills from owner. Override for external reviewers.</p>
+                </div>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
                 <textarea rows={2} value={addForm.notes} onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))}
@@ -614,6 +695,33 @@ export function ControlsClient({ controls, categories, principles, regulations }
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                     {STATUS_OPTIONS.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                   </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
+                  <select
+                    value={editForm.ownerId}
+                    onChange={e => {
+                      const uid = e.target.value
+                      const user = users.find((u: any) => u.id === uid)
+                      setEditForm(f => ({ ...f, ownerId: uid, reminderEmail: f.reminderEmail || user?.email || '' }))
+                    }}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  >
+                    <option value="">— Unassigned —</option>
+                    {users.map((u: any) => <option key={u.id} value={u.id}>{u.name} ({u.role?.replace(/_/g, ' ').toLowerCase()})</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Reminder Email</label>
+                  <input
+                    type="email"
+                    placeholder="e.g. compliance@firm.com"
+                    value={editForm.reminderEmail}
+                    onChange={e => setEditForm(f => ({ ...f, reminderEmail: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
                 </div>
               </div>
               <div>
