@@ -17,13 +17,13 @@ const navItems = [
     items: [
       { href: '/fca-tracker', label: 'FCA Tracker', icon: ChecklistIcon },
       { href: '/mica-tracker', label: 'MiCA Tracker', icon: ChecklistIcon },
-      { href: '/compliance-map', label: 'Compliance Map', icon: MapIcon },
     ],
   },
   {
     label: 'Controls & Risk',
     items: [
       { href: '/controls', label: 'Compliance Controls', icon: ShieldIcon },
+      { href: '/compliance-map', label: 'Compliance Map', icon: MapIcon },
       { href: '/monitoring', label: 'Monitoring & Alerts', icon: BellIcon },
     ],
   },

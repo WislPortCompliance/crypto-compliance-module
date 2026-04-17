@@ -12,8 +12,10 @@ interface Props {
   notAssessedControls: number
   overdueActions: number
   upcomingReviews: number
-  applicationProgress: number
-  stages: any[]
+  fcaProgress: number
+  fcaStages: any[]
+  micaProgress: number
+  micaStages: any[]
   alerts: any[]
   actions: any[]
   recentActivity: any[]
@@ -78,9 +80,11 @@ function ScoreGauge({ score }: { score: number }) {
 
 export function DashboardClient({
   score, totalControls, compliantControls, partialControls, nonCompliantControls, notAssessedControls,
-  overdueActions, upcomingReviews, applicationProgress, stages, alerts, actions, recentActivity, userName, orgName,
+  overdueActions, upcomingReviews, fcaProgress, fcaStages, micaProgress, micaStages, alerts, actions, recentActivity, userName, orgName,
 }: Props) {
   const now = new Date()
+  const showFca = fcaStages.length > 0
+  const showMica = micaStages.length > 0
 
   return (
     <div className="p-6 space-y-6">
@@ -148,49 +152,34 @@ export function DashboardClient({
         </div>
       </div>
 
-      {/* FCA Application Pipeline */}
-      <div className="card">
-        <div className="card-header flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900">FCA Application Progress</h2>
-            <p className="text-xs text-gray-500 mt-0.5">{applicationProgress}% complete · {stages.filter(s => s.status === 'COMPLETE').length} of {stages.length} stages done</p>
-          </div>
-          <Link href="/fca-tracker" className="text-blue-600 text-sm font-medium hover:underline">View tracker →</Link>
+      {/* Authorisation pipelines — each rendered only if the client is in that process */}
+      {showFca && (
+        <AuthorisationPipeline
+          title="FCA Application Progress"
+          subtitle={`${fcaProgress}% complete · ${fcaStages.filter(s => s.status === 'COMPLETE').length} of ${fcaStages.length} stages done`}
+          href="/fca-tracker"
+          stages={fcaStages}
+        />
+      )}
+      {showMica && (
+        <AuthorisationPipeline
+          title="MiCA CASP Application Progress"
+          subtitle={`${micaProgress}% complete · ${micaStages.filter(s => s.status === 'COMPLETE').length} of ${micaStages.length} stages done`}
+          href="/mica-tracker"
+          stages={micaStages}
+        />
+      )}
+      {!showFca && !showMica && (
+        <div className="card p-5 text-center">
+          <p className="text-sm text-gray-500">
+            No authorisation tracker active.{' '}
+            <Link href="/setup-wizard" className="text-blue-600 font-medium hover:underline">
+              Run the setup wizard
+            </Link>{' '}
+            to generate an FCA or MiCA application tracker for your organisation.
+          </p>
         </div>
-        <div className="card-body">
-          <div className="flex items-center gap-0 overflow-x-auto">
-            {stages.map((stage, i) => {
-              const isComplete = stage.status === 'COMPLETE'
-              const isActive = stage.status === 'IN_PROGRESS'
-              const isLast = i === stages.length - 1
-              return (
-                <div key={stage.id} className="flex items-center flex-shrink-0">
-                  <div className="flex flex-col items-center gap-1.5">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 ${
-                      isComplete ? 'bg-green-500 border-green-500 text-white' :
-                      isActive ? 'bg-blue-500 border-blue-500 text-white animate-pulse' :
-                      'bg-white border-gray-300 text-gray-400'
-                    }`}>
-                      {isComplete ? '✓' : i + 1}
-                    </div>
-                    <div className="text-center w-20">
-                      <div className={`text-xs font-medium leading-tight ${isComplete ? 'text-green-700' : isActive ? 'text-blue-700' : 'text-gray-400'}`}>
-                        {stageLabels[stage.stage] ?? stage.title}
-                      </div>
-                      <div className={`text-xs mt-0.5 ${isComplete ? 'text-green-500' : isActive ? 'text-blue-500' : 'text-gray-300'}`}>
-                        {isComplete ? 'Complete' : isActive ? 'In Progress' : 'Pending'}
-                      </div>
-                    </div>
-                  </div>
-                  {!isLast && (
-                    <div className={`h-0.5 w-6 flex-shrink-0 mx-1 ${isComplete ? 'bg-green-400' : 'bg-gray-200'}`} />
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Bottom Row: Alerts + Actions + Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -276,6 +265,53 @@ export function DashboardClient({
               </div>
             ))}
           </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AuthorisationPipeline({ title, subtitle, href, stages }: { title: string; subtitle: string; href: string; stages: any[] }) {
+  return (
+    <div className="card">
+      <div className="card-header flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+          <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>
+        </div>
+        <Link href={href} className="text-blue-600 text-sm font-medium hover:underline">View tracker →</Link>
+      </div>
+      <div className="card-body">
+        <div className="flex items-center gap-0 overflow-x-auto">
+          {stages.map((stage: any, i: number) => {
+            const isComplete = stage.status === 'COMPLETE'
+            const isActive = stage.status === 'IN_PROGRESS'
+            const isLast = i === stages.length - 1
+            return (
+              <div key={stage.id} className="flex items-center flex-shrink-0">
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 ${
+                    isComplete ? 'bg-green-500 border-green-500 text-white' :
+                    isActive ? 'bg-blue-500 border-blue-500 text-white animate-pulse' :
+                    'bg-white border-gray-300 text-gray-400'
+                  }`}>
+                    {isComplete ? '✓' : i + 1}
+                  </div>
+                  <div className="text-center w-20">
+                    <div className={`text-xs font-medium leading-tight ${isComplete ? 'text-green-700' : isActive ? 'text-blue-700' : 'text-gray-400'}`}>
+                      {stageLabels[stage.stage] ?? stage.title}
+                    </div>
+                    <div className={`text-xs mt-0.5 ${isComplete ? 'text-green-500' : isActive ? 'text-blue-500' : 'text-gray-300'}`}>
+                      {isComplete ? 'Complete' : isActive ? 'In Progress' : 'Pending'}
+                    </div>
+                  </div>
+                </div>
+                {!isLast && (
+                  <div className={`h-0.5 w-6 flex-shrink-0 mx-1 ${isComplete ? 'bg-green-400' : 'bg-gray-200'}`} />
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>

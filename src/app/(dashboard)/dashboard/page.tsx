@@ -8,9 +8,10 @@ export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
   const orgId = (session?.user as any)?.organisationId
 
-  const [controls, stages, alerts, actions, auditLogs] = await Promise.all([
+  const [controls, fcaStages, micaStages, alerts, actions, auditLogs] = await Promise.all([
     prisma.complianceControl.findMany({ where: { organisationId: orgId }, select: { status: true, nextReviewDate: true } }),
-    prisma.fCAApplicationStage.findMany({ where: { organisationId: orgId }, orderBy: { order: 'asc' } }),
+    prisma.fCAApplicationStage.findMany({ where: { organisationId: orgId, framework: 'FCA' }, orderBy: { order: 'asc' } }),
+    prisma.fCAApplicationStage.findMany({ where: { organisationId: orgId, framework: 'MICA' }, orderBy: { order: 'asc' } }),
     prisma.alert.findMany({ where: { organisationId: orgId }, orderBy: [{ read: 'asc' }, { createdAt: 'desc' }], take: 7 }),
     prisma.actionItem.findMany({ where: { organisationId: orgId }, include: { owner: { select: { name: true } } }, orderBy: { dueDate: 'asc' }, take: 6 }),
     prisma.auditLog.findMany({ where: { organisationId: orgId }, include: { user: { select: { name: true } } }, orderBy: { createdAt: 'desc' }, take: 8 }),
@@ -26,8 +27,11 @@ export default async function DashboardPage() {
   const now = new Date()
   const overdue = actions.filter(a => a.dueDate && new Date(a.dueDate) < now && a.status !== 'COMPLETE').length
   const upcomingReviews = controls.filter(c => c.nextReviewDate && new Date(c.nextReviewDate) <= new Date(now.getTime() + 30 * 86400000)).length
-  const completedStages = stages.filter(s => s.status === 'COMPLETE').length
-  const applicationProgress = stages.length > 0 ? Math.round((completedStages / stages.length) * 100) : 0
+
+  const fcaCompleted = fcaStages.filter(s => s.status === 'COMPLETE').length
+  const fcaProgress = fcaStages.length > 0 ? Math.round((fcaCompleted / fcaStages.length) * 100) : 0
+  const micaCompleted = micaStages.filter(s => s.status === 'COMPLETE').length
+  const micaProgress = micaStages.length > 0 ? Math.round((micaCompleted / micaStages.length) * 100) : 0
 
   return (
     <DashboardClient
@@ -39,8 +43,10 @@ export default async function DashboardPage() {
       notAssessedControls={notAssessed}
       overdueActions={overdue}
       upcomingReviews={upcomingReviews}
-      applicationProgress={applicationProgress}
-      stages={JSON.parse(JSON.stringify(stages))}
+      fcaProgress={fcaProgress}
+      fcaStages={JSON.parse(JSON.stringify(fcaStages))}
+      micaProgress={micaProgress}
+      micaStages={JSON.parse(JSON.stringify(micaStages))}
       alerts={JSON.parse(JSON.stringify(alerts))}
       actions={JSON.parse(JSON.stringify(actions))}
       recentActivity={JSON.parse(JSON.stringify(auditLogs))}

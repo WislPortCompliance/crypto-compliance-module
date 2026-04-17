@@ -36,6 +36,8 @@ const G20_COUNTRIES = [
   { code: 'AE', name: 'UAE', flag: '🇦🇪' },
   { code: 'CH', name: 'Switzerland', flag: '🇨🇭' },
   { code: 'HK', name: 'Hong Kong', flag: '🇭🇰' },
+  { code: 'GI', name: 'Gibraltar', flag: '🇬🇮' },
+  { code: 'NG', name: 'Nigeria', flag: '🇳🇬' },
 ]
 
 const ASSET_CLASSES = [
@@ -85,6 +87,9 @@ function computeApplicableRegulations(data: WizardData) {
   if (locs.has('AU')) regs.push('ASIC Framework')
   if (locs.has('CA')) regs.push('CSA Framework')
   if (locs.has('KR')) regs.push('Korea VAUPA')
+  if (locs.has('GI')) regs.push('Gibraltar DLT Framework')
+  if (locs.has('NG')) regs.push('Nigeria SEC Digital Assets Rules')
+  if (locs.has('ZA')) regs.push('South Africa FSCA Crypto-Asset Framework')
   if (assets.has('STABLECOINS') && (locs.has('US') || data.hqCountry === 'GB')) {
     if (!regs.includes('GENIUS Act (US Stablecoin)')) regs.push('GENIUS Act (US Stablecoin)')
   }

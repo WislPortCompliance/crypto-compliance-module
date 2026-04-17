@@ -851,6 +851,22 @@ async function main() {
     },
   ]
 
+  // MiCA evidence-document map — completed/in-progress MiCA requirements
+  // point at existing evidence docs (mostly the same docs the FCA side uses,
+  // since the underlying evidence is identical — e.g. one AML Policy evidences
+  // both the FCA MLR 2017 control and the MiCA AMLD6 requirement).
+  const reqMiCADocumentMap: Record<string, string> = {
+    'req-mica-stage-1-1': 'doc-005',  // NCA pre-engagement → Meeting Notes
+    'req-mica-stage-1-2': 'doc-001',  // Gap analysis → AML Policy (sample)
+    'req-mica-stage-2-1': 'doc-006',  // Governance arrangements → Board Governance Charter
+    'req-mica-stage-2-3': 'doc-006',  // Board composition → Board Governance Charter
+    'req-mica-stage-3-1': 'doc-003',  // PI insurance → Annual AML Report (demonstrates controls)
+    'req-mica-stage-4-1': 'doc-004',  // Cybersecurity policy → Pen Test Report
+    'req-mica-stage-5-0': 'doc-001',  // AMLD6 policy suite → AML Policy
+    'req-mica-stage-5-1': 'doc-002',  // CDD/KYC → KYC Manual
+    'req-mica-stage-5-3': 'doc-001',  // MLRO appointment → AML Policy
+  }
+
   // MiCA article references per requirement id (same key pattern as FCA map)
   const reqMiCAReferences: Record<string, string> = {
     'req-mica-stage-1-0': 'MiCA Art. 60 (perimeter) · Annex I',
@@ -900,6 +916,7 @@ async function main() {
     for (let i = 0; i < requirements.length; i++) {
       const reqId = `req-${stageFields.id}-${i}`
       const fcaReference = reqMiCAReferences[reqId] ?? null
+      const documentId = reqMiCADocumentMap[reqId] ?? null
       const reuseTemplateId = requirements[i].reuse
 
       let templateId: string
@@ -932,12 +949,13 @@ async function main() {
 
       await prisma.stageRequirement.upsert({
         where: { id: reqId },
-        update: { status: requirements[i].status, templateId, fcaReference },
+        update: { status: requirements[i].status, documentId, templateId, fcaReference },
         create: {
           id: reqId,
           stageId: stage.id,
           title: requirements[i].title,
           status: requirements[i].status,
+          documentId,
           templateId,
           fcaReference,
         },
@@ -979,6 +997,12 @@ async function main() {
     { id: 'reg-india-vda', code: 'INDIA_VDA', name: 'India VDA Framework', fullName: 'Virtual Digital Assets Taxation Framework (India)', jurisdiction: 'India', regulator: 'CBDT/FIU-IND', description: 'Indian framework for Virtual Digital Assets including 30% tax on gains, 1% TDS, and PMLA reporting requirements for VASPs.' },
     // Saudi Arabia
     { id: 'reg-sama', code: 'SAMA_DIGITAL', name: 'SAMA Digital Assets', fullName: 'SAMA Digital Asset Regulations (Saudi Arabia)', jurisdiction: 'Saudi Arabia', regulator: 'SAMA/CMA', description: 'Saudi Central Bank and Capital Market Authority regulatory framework for digital assets and crypto service providers.' },
+    // Gibraltar
+    { id: 'reg-gfsc-dlt', code: 'GFSC_DLT', name: 'Gibraltar DLT Framework', fullName: 'Gibraltar Financial Services (DLT Providers) Regulations 2020', jurisdiction: 'Gibraltar', regulator: 'GFSC', description: 'Gibraltar DLT Provider regulatory framework — world-first purpose-built DLT regime. Nine Regulatory Principles covering governance, financial crime, customer protection, market integrity, resilience, and systems of control. Attractive to crypto firms seeking EEA-equivalent UK-adjacent authorisation.' },
+    // Nigeria
+    { id: 'reg-sec-ng', code: 'SEC_NG_VASP', name: 'Nigeria SEC Digital Assets Rules', fullName: 'Nigeria SEC Rules on Issuance, Offering and Custody of Digital Assets', jurisdiction: 'Nigeria', regulator: 'SEC Nigeria', description: 'Nigerian Securities and Exchange Commission regulatory framework for Virtual Assets Service Providers (VASPs), Digital Asset Offering Platforms, and Digital Asset Custodians. Registration, capital, and conduct requirements for crypto firms serving Nigerian customers.' },
+    // South Africa
+    { id: 'reg-fsca-za', code: 'FSCA_CRYPTO', name: 'South Africa FSCA Crypto-Asset Framework', fullName: 'FSCA Declaration of Crypto Assets as Financial Products (FAIS Act)', jurisdiction: 'South Africa', regulator: 'FSCA', description: 'Financial Sector Conduct Authority declaration of crypto-assets as financial products under the FAIS Act. Crypto-Asset Service Providers must be authorised as Financial Service Providers. Key obligations cover fit-and-proper requirements, AML/CFT, and customer protection.' },
     // Global
     { id: 'reg-fatf-tr', code: 'FATF_TRAVEL_RULE', name: 'FATF Travel Rule', fullName: 'FATF Recommendation 16 - Virtual Assets Travel Rule', jurisdiction: 'Global', regulator: 'FATF', description: 'FATF requirement for VASPs to collect and transmit originator and beneficiary information for crypto transfers.' },
     { id: 'reg-fatf-40', code: 'FATF_40', name: 'FATF 40 Recommendations', fullName: 'FATF 40 Recommendations (Virtual Assets)', jurisdiction: 'Global', regulator: 'FATF', description: 'FATF international standards on combating money laundering and terrorist financing, including Recommendations 10, 15, and 16 specific to VASPs.' },

@@ -24,6 +24,9 @@ function computeApplicableRegulations(body: any): string[] {
   if (locs.has('AU')) regs.push('ASIC Framework')
   if (locs.has('CA')) regs.push('CSA Framework')
   if (locs.has('KR')) regs.push('Korea VAUPA')
+  if (locs.has('GI')) regs.push('Gibraltar DLT Framework')
+  if (locs.has('NG')) regs.push('Nigeria SEC Digital Assets Rules')
+  if (locs.has('ZA')) regs.push('South Africa FSCA Crypto-Asset Framework')
   if (assets.has('STABLECOINS') && (locs.has('US') || hq === 'GB')) regs.push('GENIUS Act')
   if (svcs.has('EXCHANGE') || svcs.has('CUSTODY') || assets.size > 0) {
     regs.push('FATF Travel Rule')
@@ -73,6 +76,7 @@ export async function POST(req: NextRequest) {
       SG: 'Singapore', KR: 'South Korea', BR: 'Brazil', IN: 'India', SA: 'Saudi Arabia',
       ZA: 'South Africa', MX: 'Mexico', AR: 'Argentina', TR: 'Turkey', ID: 'Indonesia',
       AE: 'UAE', CH: 'Switzerland', HK: 'Hong Kong',
+      GI: 'Gibraltar', NG: 'Nigeria',
     }
     await prisma.operatingLocation.create({
       data: {
