@@ -90,6 +90,9 @@ function computeApplicableRegulations(data: WizardData) {
   if (locs.has('GI')) regs.push('Gibraltar DLT Framework')
   if (locs.has('NG')) regs.push('Nigeria SEC Digital Assets Rules')
   if (locs.has('ZA')) regs.push('South Africa FSCA Crypto-Asset Framework')
+  if (locs.has('SA')) regs.push('SAMA Digital Assets')
+  if (locs.has('BR')) regs.push('Brazil Crypto Law')
+  if (locs.has('IN')) regs.push('India VDA Framework')
   if (assets.has('STABLECOINS') && (locs.has('US') || data.hqCountry === 'GB')) {
     if (!regs.includes('GENIUS Act (US Stablecoin)')) regs.push('GENIUS Act (US Stablecoin)')
   }

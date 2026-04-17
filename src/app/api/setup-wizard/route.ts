@@ -27,11 +27,83 @@ function computeApplicableRegulations(body: any): string[] {
   if (locs.has('GI')) regs.push('Gibraltar DLT Framework')
   if (locs.has('NG')) regs.push('Nigeria SEC Digital Assets Rules')
   if (locs.has('ZA')) regs.push('South Africa FSCA Crypto-Asset Framework')
+  if (locs.has('SA')) regs.push('SAMA Digital Assets')
+  if (locs.has('BR')) regs.push('Brazil Crypto Law')
+  if (locs.has('IN')) regs.push('India VDA Framework')
   if (assets.has('STABLECOINS') && (locs.has('US') || hq === 'GB')) regs.push('GENIUS Act')
   if (svcs.has('EXCHANGE') || svcs.has('CUSTODY') || assets.size > 0) {
     regs.push('FATF Travel Rule')
   }
   return Array.from(new Set(regs))
+}
+
+// ─── Wizard-managed regulations ─────────────────────────────────────────────
+// Regulations whose applicability is determined by the wizard's inputs
+// (jurisdiction / service / asset selections). When a jurisdiction is removed,
+// these entries are flipped to applicable=false. Regulations NOT on this list
+// (ISO, FATF 40 Recs, CRS, Wolfsburg, Basel) are always-on for a crypto VASP
+// and never demoted by the wizard.
+const WIZARD_MANAGED_REGULATION_NAMES = new Set<string>([
+  // UK
+  'FCA Cryptoassets Regime 2026', 'FSMA 2000', 'MLR 2017', 'SM&CR', 'UK GDPR', 'OFSI Sanctions', 'FCA Consumer Duty',
+  // EU
+  'MiCA', 'AMLD6',
+  // US
+  'BSA/FinCEN', 'FATCA', 'SEC Exchange Act', 'GENIUS Act',
+  // APAC
+  'MAS PSA', 'Japan PSA', 'Korea VAUPA',
+  // Other
+  'ASIC Framework', 'CSA Framework',
+  'Gibraltar DLT Framework', 'Nigeria SEC Digital Assets Rules', 'South Africa FSCA Crypto-Asset Framework',
+  'SAMA Digital Assets', 'Brazil Crypto Law', 'India VDA Framework',
+  // FATF Travel Rule — service/asset gated, so managed
+  'FATF Travel Rule',
+])
+
+// ─── Tracker shell templates ────────────────────────────────────────────────
+// When the wizard detects a jurisdiction that warrants FCA or MiCA authorisation,
+// it provisions a skeletal tracker (8 stages, status NOT_STARTED) so the dashboard
+// and sidebar surface the right frameworks. Rich requirement content is still
+// sourced from the main seed for the demo org; for brand-new orgs, this gives
+// them the scaffolding to begin populating.
+const FCA_STAGE_SHELLS = [
+  { stage: 'PRE_APPLICATION',     title: 'Pre-Application Assessment',        order: 1 },
+  { stage: 'BUSINESS_PLAN',       title: 'Business Plan & Governance',        order: 2 },
+  { stage: 'FINANCIAL_RESOURCES', title: 'Financial Resources Assessment',    order: 3 },
+  { stage: 'SYSTEMS_CONTROLS',    title: 'Systems & Controls Setup',          order: 4 },
+  { stage: 'AML_CTF',             title: 'AML/CTF Framework',                 order: 5 },
+  { stage: 'CONSUMER_PROTECTION', title: 'Consumer Protection Measures',      order: 6 },
+  { stage: 'SUBMISSION',          title: 'Application Submission',            order: 7 },
+  { stage: 'POST_APPROVAL',       title: 'Post-Approval Monitoring',          order: 8 },
+]
+const MICA_STAGE_SHELLS = [
+  { stage: 'PRE_APPLICATION',     title: 'Pre-Application & Regulatory Perimeter', order: 1 },
+  { stage: 'BUSINESS_PLAN',       title: 'Programme of Operations & Governance',   order: 2 },
+  { stage: 'FINANCIAL_RESOURCES', title: 'Prudential Requirements (Art. 67)',      order: 3 },
+  { stage: 'SYSTEMS_CONTROLS',    title: 'ICT & Operational Resilience (DORA)',    order: 4 },
+  { stage: 'AML_CTF',             title: 'AML/CTF under AMLD6 & TFR 2023/1113',    order: 5 },
+  { stage: 'CONSUMER_PROTECTION', title: 'Client Protection & Asset Safeguarding', order: 6 },
+  { stage: 'SUBMISSION',          title: 'NCA Application & White Paper',          order: 7 },
+  { stage: 'POST_APPROVAL',       title: 'Passporting & Ongoing Obligations',      order: 8 },
+]
+
+async function provisionTrackerIfMissing(orgId: string, framework: 'FCA' | 'MICA') {
+  const existing = await prisma.fCAApplicationStage.count({ where: { organisationId: orgId, framework: framework as any } })
+  if (existing > 0) return 0
+  const shells = framework === 'FCA' ? FCA_STAGE_SHELLS : MICA_STAGE_SHELLS
+  for (const s of shells) {
+    await prisma.fCAApplicationStage.create({
+      data: {
+        stage: s.stage as any,
+        framework: framework as any,
+        title: s.title,
+        order: s.order,
+        status: 'NOT_STARTED',
+        organisationId: orgId,
+      },
+    })
+  }
+  return shells.length
 }
 
 export async function POST(req: NextRequest) {
@@ -114,19 +186,33 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  // ─── Compliance Map: materialise applicable regulations ─────────────────
-  // For each jurisdiction/service combination the wizard identifies, upsert a
-  // ComplianceMapEntry for this org so the Compliance Map page reflects the
-  // regulatory surface area the firm just declared.
+  // ─── Compliance Map: sync applicable regulations (add + demote) ─────────
+  // Two-pass update:
+  //   1. Promote: upsert ComplianceMapEntry rows for every regulation the
+  //      wizard determines applicable (applicable=true).
+  //   2. Demote: for every wizard-managed regulation that is NOT in the new
+  //      applicable list, if an existing entry says applicable=true, flip
+  //      it to applicable=false (preserving the status field so prior
+  //      compliance assessment isn't lost).
+  // Non-managed regulations (ISO 27001, ISO 23635, FATF 40, CRS, Wolfsburg,
+  // Basel) are never touched here — they remain as the user/seed set them.
   const applicableNames = computeApplicableRegulations(body)
-  const matchedRegs = applicableNames.length
-    ? await prisma.regulation.findMany({ where: { name: { in: applicableNames } } })
-    : []
 
-  for (const reg of matchedRegs) {
+  // Pull all wizard-managed regulations from DB in a single query.
+  const managedNames = Array.from(WIZARD_MANAGED_REGULATION_NAMES)
+  const managedRegs = await prisma.regulation.findMany({ where: { name: { in: managedNames } } })
+  const applicableIdSet = new Set(managedRegs.filter(r => applicableNames.includes(r.name)).map(r => r.id))
+
+  // Promote — upsert applicable=true for each currently-applicable regulation.
+  let promoted = 0
+  for (const reg of managedRegs) {
+    if (!applicableIdSet.has(reg.id)) continue
     await prisma.complianceMapEntry.upsert({
       where: { organisationId_regulationId: { organisationId: orgId, regulationId: reg.id } },
-      update: { applicable: true },
+      update: {
+        applicable: true,
+        notes: `Auto-mapped from setup wizard: applies based on operating locations, services, or asset classes selected.`,
+      },
       create: {
         organisationId: orgId,
         regulationId: reg.id,
@@ -135,9 +221,47 @@ export async function POST(req: NextRequest) {
         notes: `Auto-mapped from setup wizard: applies based on operating locations, services, or asset classes selected.`,
       },
     })
+    promoted++
   }
 
-  const mappedNames = new Set(matchedRegs.map(r => r.name))
+  // Demote — flip existing entries to applicable=false for managed regs that
+  // are NO LONGER in the applicable list. Preserve status so any prior
+  // compliance work isn't lost; user can restore by re-selecting jurisdiction.
+  const toDemote = managedRegs.filter(r => !applicableIdSet.has(r.id))
+  let demoted = 0
+  if (toDemote.length > 0) {
+    const result = await prisma.complianceMapEntry.updateMany({
+      where: {
+        organisationId: orgId,
+        regulationId: { in: toDemote.map(r => r.id) },
+        applicable: true,
+      },
+      data: {
+        applicable: false,
+        notes: `Flipped to not-applicable by setup wizard: the originating jurisdiction/service/asset selection was removed.`,
+      },
+    })
+    demoted = result.count
+  }
+
+  // ─── Authorisation Trackers: auto-provision shells when applicable ──────
+  // If the user selects UK (or HQ=GB) and has no FCA stages, create the 8-stage
+  // FCA tracker shell. Likewise for EU selections and the MiCA tracker.
+  // Existing stages are never overwritten — this only provisions if missing.
+  const locs = new Set<string>(locations ?? [])
+  const hq = body.hqCountry ?? 'GB'
+  let fcaStagesCreated = 0
+  let micaStagesCreated = 0
+  if (locs.has('GB') || hq === 'GB') {
+    fcaStagesCreated = await provisionTrackerIfMissing(orgId, 'FCA')
+  }
+  if (locs.has('DE') || locs.has('FR') || locs.has('IT') || locs.has('EU')) {
+    micaStagesCreated = await provisionTrackerIfMissing(orgId, 'MICA')
+  }
+
+  // Unmatched = regulations the wizard said apply but which we don't have in DB.
+  // Useful for surfacing seed gaps during development; harmless otherwise.
+  const mappedNames = new Set(managedRegs.map(r => r.name))
   const unmatched = applicableNames.filter(n => !mappedNames.has(n))
 
   await prisma.auditLog.create({
@@ -149,7 +273,10 @@ export async function POST(req: NextRequest) {
         locations: locations?.length,
         assetClasses: assetClasses?.length,
         services: services?.length,
-        complianceMapEntriesMaterialised: matchedRegs.length,
+        complianceMapPromoted: promoted,
+        complianceMapDemoted: demoted,
+        fcaStagesProvisioned: fcaStagesCreated,
+        micaStagesProvisioned: micaStagesCreated,
         applicableRegulations: applicableNames,
       },
       userId: (session.user as any).id,
@@ -159,9 +286,11 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     success: true,
-    complianceMapEntries: matchedRegs.length,
+    complianceMapPromoted: promoted,
+    complianceMapDemoted: demoted,
+    fcaStagesProvisioned: fcaStagesCreated,
+    micaStagesProvisioned: micaStagesCreated,
     applicableRegulations: applicableNames,
-    // Warn client if the wizard surfaced regulation names we couldn't find in the DB
     unmatchedRegulations: unmatched,
   })
 }
