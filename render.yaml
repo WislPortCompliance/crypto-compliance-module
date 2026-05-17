@@ -2,7 +2,7 @@ services:
   - type: web
     name: crypto-comply
     runtime: node
-    region: oregon          # change to frankfurt if EU hosting preferred
+    region: frankfurt       # moved from oregon 2026-05-17 to colocate with EU Neon DB (eu-west-2) — cuts query latency from ~150ms to ~10-15ms; aligns with EnableGRC EU posture
     plan: starter           # upgrade to standard for prod; starter is fine for demo
     buildCommand: npm ci --include=dev && npx prisma generate && npx tsc --module commonjs --target es2017 --esModuleInterop true --skipLibCheck true prisma/seed.ts && npm run build
     startCommand: bash render-start.sh
